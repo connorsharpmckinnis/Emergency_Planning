@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Emergency Scenario Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Emergency Scenario Generator</h1>
+        <p>Powered by Gemini</p>
+      </header>
+
+      <main>
+        <section class="input-section">
+          <div class="input-wrapper">
+            <input
+              type="text"
+              id="topicInput"
+              placeholder="Enter a hazard (e.g., 'Cyberattack on Power Grid')"
+              autocomplete="off"
+            />
+            <button id="generateBtn">
+              <span class="btn-text">Generate Scenario</span>
+              <div class="loader"></div>
+            </button>
+          </div>
+        </section>
+
+        <section id="resultSection" class="result-section hidden">
+          <div class="scenario-header">
+            <h2 id="scenarioTitle">Scenario Title</h2>
+            <div class="badges" id="scenarioBadges">
+              <!-- Badges will be injected here -->
+            </div>
+          </div>
+
+          <div class="grid-layout">
+            <div class="card narrative-card">
+              <h3>Narrative</h3>
+              <p id="narrativeSummary"></p>
+              <div class="timeline" id="narrativeTimeline">
+                <!-- Timeline events -->
+              </div>
+            </div>
+
+            <div class="card effects-card">
+              <h3>Cascading Effects</h3>
+              <ul id="cascadingEffectsList">
+                <!-- Effects -->
+              </ul>
+            </div>
+          </div>
+
+          <div class="card plan-card">
+            <h3>Draft Response Plan</h3>
+            <div class="objectives">
+              <h4>Objectives</h4>
+              <ul id="planObjectives"></ul>
+            </div>
+            <div class="tasks-table-wrapper">
+              <table class="tasks-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Task</th>
+                    <th>Owner</th>
+                    <th>Time</th>
+                  </tr>
+                </thead>
+                <tbody id="planTasks">
+                  <!-- Tasks -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
