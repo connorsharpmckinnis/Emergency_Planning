@@ -41,8 +41,98 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Store current scenario data for save/export
+    let currentScenarioData = null;
+
+    // Save JSON Button
+    const saveJsonBtn = document.getElementById('saveJsonBtn');
+    if (saveJsonBtn) {
+        saveJsonBtn.addEventListener('click', async () => {
+            if (!currentScenarioData) return;
+            
+            try {
+                saveJsonBtn.disabled = true;
+                saveJsonBtn.textContent = 'Saving...';
+                
+                const response = await fetch('/save-scenario', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ scenario: currentScenarioData }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Save failed');
+                }
+
+                const result = await response.json();
+                alert(`Scenario saved successfully as ${result.filename}`);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to save scenario. Please try again.');
+            } finally {
+                saveJsonBtn.disabled = false;
+                saveJsonBtn.innerHTML = '<span>💾</span> Save JSON';
+            }
+        });
+    }
+
+    // Export PDF Button
+    const exportPdfBtn = document.getElementById('exportPdfBtn');
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', async () => {
+            if (!currentScenarioData) return;
+            
+            try {
+                exportPdfBtn.disabled = true;
+                exportPdfBtn.textContent = 'Generating PDF...';
+                
+                const response = await fetch('/export-pdf', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ scenario: currentScenarioData }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('PDF export failed');
+                }
+
+                // Download the PDF
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                
+                // Extract filename from Content-Disposition header or use default
+                const contentDisposition = response.headers.get('content-disposition');
+                const filename = contentDisposition 
+                    ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+                    : 'scenario.pdf';
+                
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                alert('PDF downloaded successfully!');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to export PDF. Please try again.');
+            } finally {
+                exportPdfBtn.disabled = false;
+                exportPdfBtn.innerHTML = '<span>📄</span> Download PDF';
+            }
+        });
+    }
+
     function renderScenario(data) {
-        // Metadata
+        // Store for save/export
+        currentScenarioData = data;
+        // Title and Badges
         document.getElementById('scenarioTitle').textContent = `${data.metadata.hazard_type} in ${data.metadata.location}`;
         
         const badgesContainer = document.getElementById('scenarioBadges');
@@ -62,12 +152,79 @@ document.addEventListener('DOMContentLoaded', () => {
             badgesContainer.appendChild(seasonBadge);
         }
 
-        // Orchestrator Thinking
-        const thinkingCard = document.getElementById('thinkingCard');
+        // Narrative Summary
+        document.getElementById('narrativeSummary').textContent = data.narrative.summary;
+        
+        // Timeline
+        const timelineContainer = document.getElementById('narrativeTimeline');
+        timelineContainer.innerHTML = '';
+        data.narrative.events.forEach(event => {
+            const item = document.createElement('div');
+            item.className = 'timeline-item';
+            item.innerHTML = `
+                <div class="timeline-timestamp">${event.timestamp}</div>
+                <div class="timeline-description">${event.description}</div>
+            `;
+            timelineContainer.appendChild(item);
+        });
+
+        // Metadata Cards
+        document.getElementById('metaLocation').textContent = data.metadata.location;
+        document.getElementById('metaSeason').textContent = data.metadata.season || 'N/A';
+        document.getElementById('metaSeverity').textContent = data.metadata.severity || 'N/A';
+        document.getElementById('metaHazard').textContent = data.metadata.hazard_type;
+
+        // Cascading Effects
+        const effectsList = document.getElementById('effectsList');
+        effectsList.innerHTML = '';
+        data.cascading_effects.forEach((effect, index) => {
+            const card = document.createElement('div');
+            card.className = 'effect-card';
+            
+            const probability = effect.probability !== null && effect.probability !== undefined 
+                ? `<div class="effect-field">
+                     <div class="effect-field-label">Probability</div>
+                     <div class="effect-probability">
+                       <div class="probability-bar">
+                         <div class="probability-fill" style="width: ${effect.probability * 100}%"></div>
+                       </div>
+                       <span>${(effect.probability * 100).toFixed(0)}%</span>
+                     </div>
+                   </div>` 
+                : '';
+            
+            const systemTags = effect.impacted_systems.map(sys => 
+                `<span class="system-tag">${sys}</span>`
+            ).join('');
+            
+            card.innerHTML = `
+                <div class="effect-header">
+                    <div class="effect-number">${index + 1}</div>
+                    ${effect.author ? `<div class="effect-author">${effect.author}</div>` : ''}
+                </div>
+                <div class="effect-field">
+                    <div class="effect-field-label">Cause</div>
+                    <div class="effect-field-value">${effect.cause}</div>
+                </div>
+                <div class="effect-field">
+                    <div class="effect-field-label">Effect</div>
+                    <div class="effect-field-value">${effect.effect}</div>
+                </div>
+                <div class="effect-field">
+                    <div class="effect-field-label">Impacted Systems</div>
+                    <div class="effect-systems">${systemTags}</div>
+                </div>
+                ${probability}
+            `;
+            effectsList.appendChild(card);
+        });
+
+        // Orchestrator Thinking (Footer)
+        const thinkingFooter = document.getElementById('thinkingFooter');
         const thinkingContent = document.getElementById('thinkingContent');
         
         if (data.thoughts && data.thoughts.length > 0) {
-            thinkingCard.style.display = 'block';
+            thinkingFooter.style.display = 'block';
             thinkingContent.innerHTML = '';
             data.thoughts.forEach((thought, index) => {
                 const thoughtDiv = document.createElement('div');
@@ -76,59 +233,68 @@ document.addEventListener('DOMContentLoaded', () => {
                 thinkingContent.appendChild(thoughtDiv);
             });
         } else {
-            thinkingCard.style.display = 'none';
+            thinkingFooter.style.display = 'none';
         }
 
-        // Narrative
-        document.getElementById('narrativeSummary').textContent = data.narrative.summary;
+        // Specialist Agent Debug Section
+        const debugFooter = document.getElementById('debugFooter');
+        const debugContent = document.getElementById('debugContent');
         
-        const timelineContainer = document.getElementById('narrativeTimeline');
-        timelineContainer.innerHTML = '';
-        data.narrative.events.forEach(event => {
-            const item = document.createElement('div');
-            item.className = 'timeline-item';
-            item.innerHTML = `
-                <div class="timeline-time">${event.timestamp}</div>
-                <div class="timeline-desc">${event.description}</div>
-            `;
-            timelineContainer.appendChild(item);
-        });
-
-        // Cascading Effects
-        const effectsList = document.getElementById('cascadingEffectsList');
-        effectsList.innerHTML = '';
-        data.cascading_effects.forEach((effect, index) => {
-            const li = document.createElement('li');
-            const authorTag = effect.author ? `<span class="author-tag">${effect.author}</span>` : '';
-            const probability = effect.probability !== null && effect.probability !== undefined 
-                ? `<div class="effect-field"><strong>Probability:</strong> ${(effect.probability * 100).toFixed(0)}%</div>` 
-                : '';
+        if (data.cascading_effects && data.cascading_effects.length > 0) {
+            debugFooter.style.display = 'block';
+            debugContent.innerHTML = '';
             
-            li.innerHTML = `
-                <div class="effect-header">
-                    <span class="effect-number">#${index + 1}</span>
-                    ${authorTag}
-                </div>
-                <div class="effect-field"><strong>Cause:</strong> ${effect.cause}</div>
-                <div class="effect-field"><strong>Effect:</strong> ${effect.effect}</div>
-                <div class="effect-field"><strong>Impacted Systems:</strong> ${effect.impacted_systems.join(', ')}</div>
-                ${probability}
-            `;
-            effectsList.appendChild(li);
-        });
-
-
+            data.cascading_effects.forEach((effect, index) => {
+                const debugDiv = document.createElement('div');
+                debugDiv.className = 'debug-agent-output';
+                
+                const probability = effect.probability !== null && effect.probability !== undefined 
+                    ? `<div class="debug-agent-field">
+                         <strong>Probability</strong>
+                         <div class="debug-agent-field-value">${(effect.probability * 100).toFixed(0)}%</div>
+                       </div>` 
+                    : '';
+                
+                debugDiv.innerHTML = `
+                    <div class="debug-agent-name">${effect.author || 'Unknown Agent'} - Effect #${index + 1}</div>
+                    <div class="debug-agent-field">
+                        <strong>Cause</strong>
+                        <div class="debug-agent-field-value">${effect.cause}</div>
+                    </div>
+                    <div class="debug-agent-field">
+                        <strong>Effect</strong>
+                        <div class="debug-agent-field-value">${effect.effect}</div>
+                    </div>
+                    <div class="debug-agent-field">
+                        <strong>Impacted Systems</strong>
+                        <div class="debug-agent-field-value">${effect.impacted_systems.join(', ')}</div>
+                    </div>
+                    ${probability}
+                `;
+                debugContent.appendChild(debugDiv);
+            });
+        } else {
+            debugFooter.style.display = 'none';
+        }
     }
 
     // Toggle thinking section
-    const toggleBtn = document.getElementById('toggleThinking');
-    const thinkingContent = document.getElementById('thinkingContent');
-    
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', () => {
-            const isCollapsed = thinkingContent.style.display === 'none';
-            thinkingContent.style.display = isCollapsed ? 'block' : 'none';
-            toggleBtn.textContent = isCollapsed ? '▼' : '▶';
+    const toggleThinking = document.getElementById('toggleThinking');
+    if (toggleThinking) {
+        toggleThinking.addEventListener('click', () => {
+            const content = document.getElementById('thinkingContent');
+            content.classList.toggle('hidden');
+            toggleThinking.classList.toggle('active');
+        });
+    }
+
+    // Toggle debug section
+    const toggleDebug = document.getElementById('toggleDebug');
+    if (toggleDebug) {
+        toggleDebug.addEventListener('click', () => {
+            const content = document.getElementById('debugContent');
+            content.classList.toggle('hidden');
+            toggleDebug.classList.toggle('active');
         });
     }
 

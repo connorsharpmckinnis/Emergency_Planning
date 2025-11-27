@@ -1,0 +1,10 @@
+Apex Fire Station 1 is located at 210 N Salem St.
+Apex Fire Station 2 is located at 1300 Laura Duncan Rd.
+Apex Fire Station 3 is located at 1035 Hunter St.
+Apex Fire Station 4 is located at 1615 E Williams St.
+Apex Fire Station 5 is located at 2050 Kelly Rd.
+
+Protocol for Wildfire:
+All units must prioritize structure protection over vegetation management.
+Evacuation zones are determined by the "Apex Wildfire Grid" map.
+The primary staging area for wildfire response is the Apex Community Park.

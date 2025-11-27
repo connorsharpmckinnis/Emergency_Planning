@@ -11,6 +11,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/ui_styles.css" />
   </head>
   <body>
     <div class="container">
@@ -38,34 +39,86 @@
             
             <!-- Generator Results Container -->
             <div id="results" class="hidden">
-                <!-- Existing result content will go here -->
-                <div class="scenario-header">
-                    <h2 id="scenarioTitle">Scenario Title</h2>
-                    <div class="badges" id="scenarioBadges"></div>
-                </div>
-
-                <div class="card thinking-card" id="thinkingCard" style="display: none;">
-                    <h3>
-                        <span>Orchestrator Thinking</span>
-                        <button class="toggle-btn" id="toggleThinking">▼</button>
-                    </h3>
-                    <div class="thinking-content" id="thinkingContent"></div>
-                </div>
-
-                <div class="grid-layout">
-                    <div class="card narrative-card">
-                        <h3>Narrative</h3>
+                <!-- Hero Section: Narrative -->
+                <div class="narrative-hero">
+                    <div class="narrative-header">
+                        <h2 id="scenarioTitle">Scenario Title</h2>
+                        <div class="badges" id="scenarioBadges"></div>
+                    </div>
+                    <div class="action-buttons">
+                        <button id="saveJsonBtn" class="action-btn save-btn">
+                            <span>💾</span> Save JSON
+                        </button>
+                        <button id="exportPdfBtn" class="action-btn export-btn">
+                            <span>📄</span> Download PDF
+                        </button>
+                    </div>
+                    <div class="narrative-summary">
                         <p id="narrativeSummary"></p>
-                        <div class="timeline" id="narrativeTimeline"></div>
-                    </div>
-
-                    <div class="card effects-card">
-                        <h3>Cascading Effects</h3>
-                        <ul id="cascadingEffectsList"></ul>
                     </div>
                 </div>
 
+                <!-- Timeline Section -->
+                <div class="timeline-section">
+                    <h3>Event Timeline</h3>
+                    <div class="timeline-container" id="narrativeTimeline"></div>
+                </div>
 
+                <!-- Metadata Grid -->
+                <div class="metadata-grid">
+                    <div class="metadata-card">
+                        <div class="metadata-icon">📍</div>
+                        <div class="metadata-content">
+                            <span class="metadata-label">Location</span>
+                            <span class="metadata-value" id="metaLocation"></span>
+                        </div>
+                    </div>
+                    <div class="metadata-card">
+                        <div class="metadata-icon">🌡️</div>
+                        <div class="metadata-content">
+                            <span class="metadata-label">Season</span>
+                            <span class="metadata-value" id="metaSeason"></span>
+                        </div>
+                    </div>
+                    <div class="metadata-card">
+                        <div class="metadata-icon">⚠️</div>
+                        <div class="metadata-content">
+                            <span class="metadata-label">Severity</span>
+                            <span class="metadata-value" id="metaSeverity"></span>
+                        </div>
+                    </div>
+                    <div class="metadata-card">
+                        <div class="metadata-icon">🎯</div>
+                        <div class="metadata-content">
+                            <span class="metadata-label">Hazard Type</span>
+                            <span class="metadata-value" id="metaHazard"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cascading Effects -->
+                <div class="effects-section">
+                    <h3>Cascading Effects Analysis</h3>
+                    <div class="effects-grid" id="effectsList"></div>
+                </div>
+
+                <!-- Orchestrator Thinking (Subtle Footer) -->
+                <div class="thinking-footer" id="thinkingFooter" style="display: none;">
+                    <button class="thinking-toggle" id="toggleThinking">
+                        <span>View Orchestrator Reasoning</span>
+                        <span class="toggle-icon">▼</span>
+                    </button>
+                    <div class="thinking-content hidden" id="thinkingContent"></div>
+                </div>
+
+                <!-- Specialist Agent Debug Section -->
+                <div class="debug-footer" id="debugFooter" style="display: none;">
+                    <button class="debug-toggle" id="toggleDebug">
+                        <span>🔧 View Specialist Agent Outputs (Debug)</span>
+                        <span class="toggle-icon">▼</span>
+                    </button>
+                    <div class="debug-content hidden" id="debugContent"></div>
+                </div>
             </div>
         </div>
 

@@ -16,16 +16,21 @@ def verify_multi_agent():
     topic = "Wildfire approaching a residential area"
     print(f"Generating scenario for topic: '{topic}'")
     
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
             scenario = generate_scenario_data(topic)
             print("\nGeneration Successful!")
             print(f"Title: {scenario.metadata.hazard_type} in {scenario.metadata.location}")
             print(f"Cascading Effects Count: {len(scenario.cascading_effects)}")
             
+            fire_effect_found = False
             for i, effect in enumerate(scenario.cascading_effects):
-                print(f"  Effect {i+1}: {effect.cause} -> {effect.effect}")
+                print(f"  Effect {i+1} ({effect.author}): {effect.cause} -> {effect.effect}")
+                if "Fire" in str(effect.author):
+                    fire_effect_found = True
+                    # Check if retrieval was likely used (heuristic)
+                    if "Station" in effect.effect or "Protocol" in effect.effect or "Community Park" in effect.effect:
+                        print("    [Retrieval Check] Fire agent likely used vector store data!")
+                    else:
+                        print("    [Retrieval Check] No obvious retrieval markers found (this is okay, retrieval is probabilistic).")
                 
             if len(scenario.cascading_effects) > 0:
                 print("\nSUCCESS: Multi-agent system generated cascading effects.")
