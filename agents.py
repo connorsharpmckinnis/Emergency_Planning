@@ -1,5 +1,6 @@
 import os
 from google import genai
+from google.genai import types
 from schemas import CascadingEffect
 import dotenv
 
@@ -27,13 +28,16 @@ class SpecialistAgent:
         Generate a single detailed CascadingEffect object.
         """
 
+        system_prompt = "You are an expert in emergency management for the town of Apex, NC, USA. You write in a friendly, professional way. Apex NC is a suburban town with a population of 80,000 people, with a small but dynamic downtown area."
+        
         response = self.client.models.generate_content(
-            model="gemini-2.5-flash-lite",
+            model="gemini-2.5-flash",
             contents=prompt,
-            config={
-                "response_mime_type": "application/json",
-                "response_schema": CascadingEffect,
-            },
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                response_mime_type="application/json",
+                response_schema=CascadingEffect,
+            ),
         )
 
         return CascadingEffect.model_validate_json(response.text)
@@ -55,4 +59,6 @@ def consult_specialist(domain: str, scenario_context: str) -> CascadingEffect:
     if not agent:
         raise ValueError(f"Unknown specialist domain: {domain}")
     
-    return agent.generate_cascading_effect(scenario_context)
+    effect = agent.generate_cascading_effect(scenario_context)
+    effect.author = f"{agent.domain} Agent"
+    return effect

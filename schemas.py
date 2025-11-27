@@ -21,11 +21,13 @@ class CascadingEffect(BaseModel):
     effect: str = Field(description="Resulting consequence.")
     impacted_systems: List[str] = Field(description="Critical infrastructure, populations, or services affected.")
     probability: Optional[float] = Field(description="Estimated probability of this cascade, 0–1.")
+    author: Optional[str] = Field(description="The AI agent responsible for generating this effect.")
 
 class ResponseTask(BaseModel):
     task_id: str = Field(description="Stable ID such as 'T1'.")
     description: str = Field(description="Clear task description.")
-    owner: Optional[str] = Field(description="Responsible role or agency.")
+    priority: str = Field(description="Priority level: High, Medium, or Low.")
+    assigned_to: str = Field(description="Responsible role or agency.")
     estimated_time_minutes: Optional[int] = Field(description="Estimated time to complete.")
     dependencies: List[str] = Field(default_factory=list, description="List of task_ids this task relies on.")
 
@@ -36,8 +38,11 @@ class DraftResponsePlan(BaseModel):
     confidence: Optional[float] = Field(description="Model confidence in this plan, 0–1.")
     references: List[str] = Field(default_factory=list, description="Cited source documents from RAG or database.")
 
+class ThoughtSummary(BaseModel):
+    content: str = Field(description="Summary of the orchestrator's reasoning process.")
+
 class EmergencyScenario(BaseModel):
     metadata: ScenarioMetadata
     narrative: ScenarioNarrative
     cascading_effects: List[CascadingEffect]
-    draft_response_plan: DraftResponsePlan
+    thoughts: List[ThoughtSummary] = Field(default_factory=list, description="Orchestrator's reasoning process.")

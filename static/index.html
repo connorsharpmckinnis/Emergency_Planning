@@ -15,74 +15,92 @@
   <body>
     <div class="container">
       <header>
-        <h1>Emergency Scenario Generator</h1>
-        <p>Powered by Gemini</p>
+        <h1>Apex Emergency Scenario Generator</h1>
+        <p>AI-Powered Multi-Agent Simulation & Response Planning</p>
       </header>
 
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="generator">Disaster Generator</button>
+        <button class="tab-btn" data-tab="planner">Response Planner</button>
+      </div>
+
       <main>
-        <section class="input-section">
-          <div class="input-wrapper">
-            <input
-              type="text"
-              id="topicInput"
-              placeholder="Enter a hazard (e.g., 'Cyberattack on Power Grid')"
-              autocomplete="off"
-            />
-            <button id="generateBtn">
-              <span class="btn-text">Generate Scenario</span>
-              <div class="loader"></div>
-            </button>
-          </div>
-        </section>
+        <!-- DISASTER GENERATOR TAB -->
+        <div id="generatorTab" class="tab-content active">
+            <div class="input-group">
+              <input type="text" id="topicInput" placeholder="Enter an emergency scenario (e.g., 'Category 4 Hurricane hitting Apex')" />
+              <button id="generateBtn">Generate Scenario</button>
+            </div>
+            <div id="loading" class="hidden">
+              <div class="spinner"></div>
+              <p>Orchestrating agents...</p>
+            </div>
+            
+            <!-- Generator Results Container -->
+            <div id="results" class="hidden">
+                <!-- Existing result content will go here -->
+                <div class="scenario-header">
+                    <h2 id="scenarioTitle">Scenario Title</h2>
+                    <div class="badges" id="scenarioBadges"></div>
+                </div>
 
-        <section id="resultSection" class="result-section hidden">
-          <div class="scenario-header">
-            <h2 id="scenarioTitle">Scenario Title</h2>
-            <div class="badges" id="scenarioBadges">
-              <!-- Badges will be injected here -->
-            </div>
-          </div>
+                <div class="card thinking-card" id="thinkingCard" style="display: none;">
+                    <h3>
+                        <span>Orchestrator Thinking</span>
+                        <button class="toggle-btn" id="toggleThinking">▼</button>
+                    </h3>
+                    <div class="thinking-content" id="thinkingContent"></div>
+                </div>
 
-          <div class="grid-layout">
-            <div class="card narrative-card">
-              <h3>Narrative</h3>
-              <p id="narrativeSummary"></p>
-              <div class="timeline" id="narrativeTimeline">
-                <!-- Timeline events -->
-              </div>
+                <div class="grid-layout">
+                    <div class="card narrative-card">
+                        <h3>Narrative</h3>
+                        <p id="narrativeSummary"></p>
+                        <div class="timeline" id="narrativeTimeline"></div>
+                    </div>
+
+                    <div class="card effects-card">
+                        <h3>Cascading Effects</h3>
+                        <ul id="cascadingEffectsList"></ul>
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+
+        <!-- RESPONSE PLANNER TAB -->
+        <div id="plannerTab" class="tab-content">
+            <div class="card input-card">
+                <h3>Generate Response Plan</h3>
+                <p>Paste a scenario description or JSON to generate a detailed response plan.</p>
+                <textarea id="plannerInput" rows="10" placeholder="Paste scenario details here..."></textarea>
+                <button id="generatePlanBtn" class="primary-btn">Generate Plan</button>
             </div>
 
-            <div class="card effects-card">
-              <h3>Cascading Effects</h3>
-              <ul id="cascadingEffectsList">
-                <!-- Effects -->
-              </ul>
+            <div id="plannerLoading" class="hidden">
+                <div class="spinner"></div>
+                <p>Drafting response plan...</p>
             </div>
-          </div>
 
-          <div class="card plan-card">
-            <h3>Draft Response Plan</h3>
-            <div class="objectives">
-              <h4>Objectives</h4>
-              <ul id="planObjectives"></ul>
+            <div id="plannerResults" class="hidden">
+                <div class="card plan-card">
+                    <h3>Draft Response Plan</h3>
+                    <div class="objectives" id="plannerObjectives"></div>
+                    <table class="tasks-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Task</th>
+                                <th>Priority</th>
+                                <th>Owner</th>
+                            </tr>
+                        </thead>
+                        <tbody id="plannerTasksBody"></tbody>
+                    </table>
+                </div>
             </div>
-            <div class="tasks-table-wrapper">
-              <table class="tasks-table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Task</th>
-                    <th>Owner</th>
-                    <th>Time</th>
-                  </tr>
-                </thead>
-                <tbody id="planTasks">
-                  <!-- Tasks -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
+        </div>
       </main>
     </div>
     <script src="/static/app.js"></script>

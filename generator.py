@@ -1,7 +1,7 @@
 import os
 from google import genai
 from google.genai import types
-from schemas import EmergencyScenario, CascadingEffect
+from schemas import EmergencyScenario, CascadingEffect, ThoughtSummary, DraftResponsePlan
 from agents import consult_specialist
 import dotenv
 
@@ -18,10 +18,10 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
 
     # Initial prompt to get the base scenario and decide on specialists
     prompt = f"""
-    You are the Orchestrator for an Emergency Scenario Generator.
+    You are the Orchestrator for an Emergency Scenario Generator for the Town of Apex, NC, USA. Apex is a suburban town outside in Wake County with a population of 80,000 people. It has a primarily suburban makeup with a small but active downtown center.
     Your goal is to create a comprehensive emergency scenario based on the topic: "{topic}".
 
-    1. First, outline the core scenario (Metadata, Narrative, and Draft Response Plan).
+    1. First, outline the core scenario (Metadata and Narrative).
     2. Then, identify which specialist domains (fire, police, medical, utilities, transport) would be most impacted.
     3. Use the `consult_specialist` tool to get detailed cascading effects from at least 2-3 relevant specialists.
     4. Finally, aggregate everything into a single EmergencyScenario object.
@@ -31,7 +31,7 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
 
     # We need a multi-turn conversation to handle tool calls
     chat = client.chats.create(
-        model="gemini-2.5-flash-lite",
+        model="gemini-2.5-flash",
         config=types.GenerateContentConfig(
             tools=tools,
             response_mime_type="application/json",
@@ -57,7 +57,7 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
     
     # Re-initializing client for manual control without chat helper for now to be explicit
     
-    model_id = "gemini-2.5-flash-lite"
+    model_id = "gemini-2.5-flash"
     
     # Step 1: Orchestrator Plan & Tool Calls
     # We ask for a list of specialists to call first, or we let it call them.
@@ -74,6 +74,9 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
         contents=prompt,
         config=types.GenerateContentConfig(
             tools=tools,
+            thinking_config=types.ThinkingConfig(
+                include_thoughts=True
+            )
             # We do NOT set response_schema here so it can call tools
         )
     )
@@ -81,6 +84,7 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
     # Handle tool calls loop
     # We'll collect the cascading effects manually
     cascading_effects = []
+    thoughts = []  # Collect thought summaries
     
     # Simple loop to handle up to 5 turns of tool calls
     current_response = response
@@ -88,6 +92,11 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
     
     # Add the first model response to history
     history.append(current_response.candidates[0].content)
+    
+    # Extract thoughts from the first response
+    for part in current_response.candidates[0].content.parts:
+        if part.thought and part.text:
+            thoughts.append(ThoughtSummary(content=part.text))
 
     while True:
         # Check if there are function calls
@@ -135,9 +144,19 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
              current_response = client.models.generate_content(
                  model=model_id,
                  contents=history,
-                 config=types.GenerateContentConfig(tools=tools)
+                 config=types.GenerateContentConfig(
+                     tools=tools,
+                     thinking_config=types.ThinkingConfig(
+                         include_thoughts=True
+                     )
+                 )
              )
              history.append(current_response.candidates[0].content)
+             
+             # Extract thoughts from this response
+             for part in current_response.candidates[0].content.parts:
+                 if part.thought and part.text:
+                     thoughts.append(ThoughtSummary(content=part.text))
         else:
             break
 
@@ -155,9 +174,51 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
         contents=history,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_schema=EmergencyScenario
+            response_schema=EmergencyScenario,
+            thinking_config=types.ThinkingConfig(
+                include_thoughts=True
+            )
         )
     )
+    
+    # Extract final thoughts
+    for part in final_response.candidates[0].content.parts:
+        if part.thought and part.text:
+            thoughts.append(ThoughtSummary(content=part.text))
 
     scenario = EmergencyScenario.model_validate_json(final_response.text)
+    # Inject the collected thoughts
+    scenario.thoughts = thoughts
     return scenario
+
+def generate_response_plan(scenario_context: str) -> DraftResponsePlan:
+    """
+    Generates a draft response plan based on the provided scenario context.
+    """
+    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+    model_id = "gemini-2.5-flash"
+
+    prompt = f"""
+    You are an expert Emergency Response Planner for Apex, NC.
+    
+    Based on the following emergency scenario description, create a detailed Draft Response Plan.
+    
+    Scenario Context:
+    {scenario_context}
+    
+    Generate a DraftResponsePlan object with specific objectives, tasks, and resource notes.
+    """
+
+    response = client.models.generate_content(
+        model=model_id,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=DraftResponsePlan,
+            thinking_config=types.ThinkingConfig(
+                include_thoughts=True
+            )
+        )
+    )
+    
+    return DraftResponsePlan.model_validate_json(response.text)
