@@ -1,8 +1,78 @@
+console.log('App.js script starting...');
+
+    // Magic Prompt Logic
+    window.generatePrompt = async function() {
+        const btn = document.getElementById('magicPromptBtn');
+        const input = document.getElementById('topicInput');
+        
+        if (!btn) return;
+
+        try {
+            btn.disabled = true;
+            btn.classList.add('loading');
+            
+            const response = await fetch('/generate-prompt-suggestion', {
+                method: 'POST'
+            });
+
+            if (!response.ok) throw new Error('Failed to generate prompt');
+
+            const data = await response.json();
+            input.value = data.prompt;
+            
+        } catch (error) {
+            console.error('Error generating prompt:', error);
+            alert('Failed to generate prompt suggestion.');
+        } finally {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+        }
+    };
+
 document.addEventListener('DOMContentLoaded', () => {
     const generateBtn = document.getElementById('generateBtn');
     const topicInput = document.getElementById('topicInput');
     const resultSection = document.getElementById('results');
     const loadingSection = document.getElementById('loading');
+    const thinkingMessage = document.getElementById('thinkingMessage');
+
+    // Thinking messages to rotate through
+    const thinkingMessages = [
+        'Crafting emergency narrative...',
+        'Analyzing initial conditions...',
+        'Simulating cascading effects...',
+        'Consulting specialist agents...',
+        'Evaluating system impacts...',
+        'Calculating probabilities...',
+        'Synthesizing final scenario...'
+    ];
+
+    let thinkingInterval = null;
+
+    function startThinkingMessages() {
+        let index = 0;
+        if (thinkingMessage) {
+            thinkingMessage.textContent = thinkingMessages[0];
+            thinkingInterval = setInterval(() => {
+                index = (index + 1) % thinkingMessages.length;
+                thinkingMessage.textContent = thinkingMessages[index];
+            }, 3000); // Change message every 3 seconds
+        }
+    }
+
+    function stopThinkingMessages() {
+        if (thinkingInterval) {
+            clearInterval(thinkingInterval);
+            thinkingInterval = null;
+        }
+        if (thinkingMessage) {
+            thinkingMessage.textContent = '';
+        }
+    }
+
+    // Ensure loading is hidden on initial page load
+    loadingSection.classList.add('hidden');
+    resultSection.classList.add('hidden');
 
     generateBtn.addEventListener('click', async () => {
         const topic = topicInput.value.trim();
@@ -13,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
         generateBtn.classList.add('loading');
         resultSection.classList.add('hidden');
         loadingSection.classList.remove('hidden');
+        startThinkingMessages();
 
         try {
             const response = await fetch('/generate', {
@@ -28,6 +99,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const scenario = await response.json();
+            
+            // Small delay for smooth transition
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
             renderScenario(scenario);
             resultSection.classList.remove('hidden');
         } catch (error) {
@@ -35,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Failed to generate scenario. Please try again.');
         } finally {
             // UI State: Reset
+            stopThinkingMessages();
             generateBtn.disabled = false;
             generateBtn.classList.remove('loading');
             loadingSection.classList.add('hidden');
@@ -126,6 +202,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 exportPdfBtn.disabled = false;
                 exportPdfBtn.innerHTML = '<span>📄</span> Download PDF';
             }
+        });
+    }
+
+    // Draft Response Button
+    const draftResponseBtn = document.getElementById('draftResponseBtn');
+    if (draftResponseBtn) {
+        draftResponseBtn.addEventListener('click', async () => {
+            if (!currentScenarioData) return;
+            
+            // Switch to planner tab
+            const plannerTabBtn = document.querySelector('[data-tab="planner"]');
+            const generatorTab = document.getElementById('generatorTab');
+            const plannerTab = document.getElementById('plannerTab');
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            
+            // Update tab buttons
+            tabBtns.forEach(btn => btn.classList.remove('active'));
+            plannerTabBtn.classList.add('active');
+            
+            // Update tab content
+            generatorTab.classList.remove('active');
+            plannerTab.classList.add('active');
+            
+            // Populate planner input with JSON
+            const plannerInput = document.getElementById('plannerInput');
+            plannerInput.value = JSON.stringify(currentScenarioData, null, 2);
+            
+            // Trigger generate plan button after a short delay to ensure UI updates
+            setTimeout(() => {
+                const generatePlanBtn = document.getElementById('generatePlanBtn');
+                generatePlanBtn.click();
+            }, 100);
         });
     }
 

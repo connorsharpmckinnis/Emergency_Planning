@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
-from generator import generate_scenario_data, generate_response_plan
+from generator import generate_scenario_data, generate_response_plan, generate_prompt_suggestion
 from schemas import EmergencyScenario
 import json
 import os
@@ -43,6 +43,14 @@ async def generate_plan(request: PlanRequest):
     try:
         plan = generate_response_plan(request.scenario_context)
         return plan
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/generate-prompt-suggestion")
+async def generate_prompt_suggestion_endpoint():
+    try:
+        prompt = generate_prompt_suggestion()
+        return {"prompt": prompt}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

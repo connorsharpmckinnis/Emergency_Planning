@@ -62,7 +62,7 @@ class SpecialistAgent:
              config.tools = [types.Tool(file_search=types.FileSearch(file_search_store_names=[self.vector_store_name]))]
 
         response = self.client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.5-flash-lite",
             contents=prompt,
             config=config,
         )

@@ -222,3 +222,28 @@ def generate_response_plan(scenario_context: str) -> DraftResponsePlan:
     )
     
     return DraftResponsePlan.model_validate_json(response.text)
+
+def generate_prompt_suggestion() -> str:
+    """
+    Generates a creative emergency scenario prompt suggestion.
+    """
+    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+    model_id = "gemini-2.5-flash"
+
+    prompt = """
+    Generate a creative, detailed, and realistic emergency scenario prompt for the town of Apex, NC.
+    The prompt should be 1-2 sentences long and describe a specific hazard or event.
+    Examples:
+    - "A Category 3 hurricane stalling over the region causing massive flooding in downtown Apex."
+    - "A freight train derailment near the center of town releasing a cloud of hazardous chemicals."
+    - "A cyberattack on the municipal water treatment plant causing a shutdown of water services."
+    
+    Output ONLY the prompt text, nothing else.
+    """
+
+    response = client.models.generate_content(
+        model=model_id,
+        contents=prompt
+    )
+    
+    return response.text.strip()

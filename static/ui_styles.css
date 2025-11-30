@@ -76,6 +76,17 @@
     transform: translateY(-2px);
 }
 
+.draft-btn {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.draft-btn:hover {
+    background: rgba(255, 255, 255, 0.35);
+    transform: translateY(-2px);
+}
+
 /* ===== TIMELINE SECTION ===== */
 .timeline-section {
     background: white;

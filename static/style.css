@@ -121,6 +121,83 @@ button {
   min-height: 50px;
 }
 
+.icon-btn {
+  padding: 0;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 10;
+  position: relative;
+}
+
+/* Icon button loading state */
+.icon-btn.loading {
+  pointer-events: none;
+}
+
+.icon-btn.loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #0f172a;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(168, 85, 247, 0.2);
+  border-top-color: var(--accent-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1.5rem;
+}
+
+#loading {
+  text-align: center;
+  padding: 3rem;
+  animation: fadeIn 0.3s ease;
+}
+
+#loading p {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  margin: 0.5rem 0;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+#loading .thinking-message {
+  color: var(--accent-color);
+  font-weight: 500;
+  min-height: 1.5rem;
+  animation: fadeInOut 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.icon-btn.loading {
+  color: transparent;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 button:hover {
   background: var(--accent-hover);
   transform: translateY(-1px);
@@ -149,6 +226,11 @@ button.loading .btn-text {
 
 button.loading .loader {
   display: block;
+}
+
+/* Hidden utility class */
+.hidden {
+  display: none !important;
 }
 
 .result-section.hidden {
@@ -270,13 +352,15 @@ button.loading .loader {
     padding: 1.25rem;
     border-radius: 8px;
     margin-bottom: 1rem;
-    border-left: 3px solid var(--warning-color);
+    border: 2px solid var(--warning);
 }
 
-.effect-number {
-    font-weight: 700;
-    color: var(--warning-color);
-    font-size: 0.9rem;
+.effect-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
 }
 
 .effect-field {

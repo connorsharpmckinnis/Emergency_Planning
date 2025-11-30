@@ -30,11 +30,13 @@
         <div id="generatorTab" class="tab-content active">
             <div class="input-group">
               <input type="text" id="topicInput" placeholder="Enter an emergency scenario (e.g., 'Category 4 Hurricane hitting Apex')" />
+              <button id="magicPromptBtn" class="icon-btn" title="Generate AI Prompt" onclick="console.log('Inline click'); if(window.generatePrompt) window.generatePrompt(); else console.error('generatePrompt not defined');">✨</button>
               <button id="generateBtn">Generate Scenario</button>
             </div>
             <div id="loading" class="hidden">
               <div class="spinner"></div>
               <p>Orchestrating agents...</p>
+              <p class="thinking-message" id="thinkingMessage"></p>
             </div>
             
             <!-- Generator Results Container -->
@@ -51,6 +53,9 @@
                         </button>
                         <button id="exportPdfBtn" class="action-btn export-btn">
                             <span>📄</span> Download PDF
+                        </button>
+                        <button id="draftResponseBtn" class="action-btn draft-btn">
+                            <span>📋</span> Draft Response
                         </button>
                     </div>
                     <div class="narrative-summary">
@@ -156,6 +161,6 @@
         </div>
       </main>
     </div>
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=2"></script>
   </body>
 </html>
