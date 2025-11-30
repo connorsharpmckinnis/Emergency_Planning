@@ -43,6 +43,69 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Handle async button operations with loading states and error handling
+     * @param {HTMLElement} button - Button element to manage
+     * @param {Function} asyncOperation - Async function to execute
+     * @param {Object} options - Configuration options
+     * @returns {Promise} Result from asyncOperation
+     */
+    async function handleAsyncButton(button, asyncOperation, options = {}) {
+        const {
+            loadingText = 'Loading...',
+            loadingClass = null,
+            useTextContent = false,
+            errorMessage = 'Operation failed. Please try again.',
+            successMessage = null
+        } = options;
+        
+        // Save original state
+        const originalContent = button.innerHTML;
+        const originalDisabled = button.disabled;
+        
+        try {
+            // Set loading state
+            button.disabled = true;
+            if (loadingClass) {
+                button.classList.add(loadingClass);
+            } else {
+                if (useTextContent) {
+                    button.textContent = loadingText;
+                } else {
+                    button.innerHTML = loadingText;
+                }
+            }
+            
+            // Execute the async operation
+            const result = await asyncOperation();
+            
+            // Show success message if provided
+            if (successMessage) {
+                if (typeof successMessage === 'function') {
+                    alert(successMessage(result));
+                } else {
+                    alert(successMessage);
+                }
+            }
+            
+            return result;
+            
+        } catch (error) {
+            console.error('Error:', error);
+            alert(errorMessage);
+            throw error;
+            
+        } finally {
+            // Restore original state
+            button.disabled = originalDisabled;
+            if (loadingClass) {
+                button.classList.remove(loadingClass);
+            } else {
+                button.innerHTML = originalContent;
+            }
+        }
+    }
+
     // Ensure loading is hidden on initial page load
     loadingSection.classList.add('hidden');
     resultSection.classList.add('hidden');
@@ -96,26 +159,21 @@ document.addEventListener('DOMContentLoaded', () => {
         magicPromptBtn.addEventListener('click', async () => {
             if (magicPromptBtn.disabled) return;
             
-            try {
-                magicPromptBtn.disabled = true;
-                magicPromptBtn.classList.add('loading');
-                
-                const response = await fetch('/generate-prompt-suggestion', {
-                    method: 'POST'
-                });
-
-                if (!response.ok) throw new Error('Failed to generate prompt');
-
-                const data = await response.json();
-                topicInput.value = data.prompt;
-                
-            } catch (error) {
-                console.error('Error generating prompt:', error);
-                alert(`Failed to generate prompt suggestion. ${error}`);
-            } finally {
-                magicPromptBtn.disabled = false;
-                magicPromptBtn.classList.remove('loading');
-            }
+            await handleAsyncButton(
+                magicPromptBtn,
+                async () => {
+                    const response = await fetch('/generate-prompt-suggestion', {
+                        method: 'POST'
+                    });
+                    if (!response.ok) throw new Error('Failed to generate prompt');
+                    const data = await response.json();
+                    topicInput.value = data.prompt;
+                },
+                {
+                    loadingClass: 'loading',
+                    errorMessage: 'Failed to generate prompt suggestion.'
+                }
+            );
         });
     }
 
@@ -128,31 +186,23 @@ document.addEventListener('DOMContentLoaded', () => {
         saveJsonBtn.addEventListener('click', async () => {
             if (!currentScenarioData) return;
             
-            try {
-                saveJsonBtn.disabled = true;
-                saveJsonBtn.textContent = 'Saving...';
-                
-                const response = await fetch('/save-scenario', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ scenario: currentScenarioData }),
-                });
-
-                if (!response.ok) {
-                    throw new Error('Save failed');
+            await handleAsyncButton(
+                saveJsonBtn,
+                async () => {
+                    const response = await fetch('/save-scenario', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ scenario: currentScenarioData })
+                    });
+                    if (!response.ok) throw new Error('Save failed');
+                    return await response.json();
+                },
+                {
+                    loadingText: 'Saving...',
+                    errorMessage: 'Failed to save scenario. Please try again.',
+                    successMessage: (result) => `Scenario saved successfully as ${result.filename}`
                 }
-
-                const result = await response.json();
-                alert(`Scenario saved successfully as ${result.filename}`);
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Failed to save scenario. Please try again.');
-            } finally {
-                saveJsonBtn.disabled = false;
-                saveJsonBtn.innerHTML = '<span>💾</span> Save JSON';
-            }
+            );
         });
     }
 
@@ -162,48 +212,40 @@ document.addEventListener('DOMContentLoaded', () => {
         exportPdfBtn.addEventListener('click', async () => {
             if (!currentScenarioData) return;
             
-            try {
-                exportPdfBtn.disabled = true;
-                exportPdfBtn.textContent = 'Generating PDF...';
-                
-                const response = await fetch('/export-pdf', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ scenario: currentScenarioData }),
-                });
-
-                if (!response.ok) {
-                    throw new Error('PDF export failed');
+            await handleAsyncButton(
+                exportPdfBtn,
+                async () => {
+                    const response = await fetch('/export-pdf', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ scenario: currentScenarioData })
+                    });
+                    if (!response.ok) throw new Error('PDF export failed');
+                    
+                    // Download the PDF
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    
+                    // Extract filename from Content-Disposition header or use default
+                    const contentDisposition = response.headers.get('content-disposition');
+                    const filename = contentDisposition 
+                        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+                        : 'scenario.pdf';
+                    
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                },
+                {
+                    loadingText: 'Generating PDF...',
+                    errorMessage: 'Failed to export PDF. Please try again.',
+                    successMessage: 'PDF downloaded successfully!'
                 }
-
-                // Download the PDF
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                
-                // Extract filename from Content-Disposition header or use default
-                const contentDisposition = response.headers.get('content-disposition');
-                const filename = contentDisposition 
-                    ? contentDisposition.split('filename=')[1].replace(/"/g, '')
-                    : 'scenario.pdf';
-                
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-                
-                alert('PDF downloaded successfully!');
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Failed to export PDF. Please try again.');
-            } finally {
-                exportPdfBtn.disabled = false;
-                exportPdfBtn.innerHTML = '<span>📄</span> Download PDF';
-            }
+            );
         });
     }
 
@@ -283,34 +325,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveOrchestratorBtn = document.getElementById('saveOrchestratorBtn');
     if (saveOrchestratorBtn) {
         saveOrchestratorBtn.addEventListener('click', async () => {
-            try {
-                saveOrchestratorBtn.disabled = true;
-                saveOrchestratorBtn.textContent = 'Saving...';
-                
-                // Get current prompts
-                const response = await fetch('/api/prompts');
-                const prompts = await response.json();
-                
-                // Update orchestrator prompt
-                prompts.orchestrator_prompt = document.getElementById('orchestratorPrompt').value;
-                
-                // Save back
-                const saveResponse = await fetch('/api/prompts', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(prompts)
-                });
-                
-                if (!saveResponse.ok) throw new Error('Save failed');
-                
-                alert('✅ Orchestrator prompt saved successfully!');
-            } catch (error) {
-                console.error('Error:', error);
-                alert('❌ Failed to save orchestrator prompt');
-            } finally {
-                saveOrchestratorBtn.disabled = false;
-                saveOrchestratorBtn.innerHTML = '💾 Save Orchestrator Prompt';
-            }
+            await handleAsyncButton(
+                saveOrchestratorBtn,
+                async () => {
+                    // Get current prompts
+                    const response = await fetch('/api/prompts');
+                    const prompts = await response.json();
+                    
+                    // Update orchestrator prompt
+                    prompts.orchestrator_prompt = document.getElementById('orchestratorPrompt').value;
+                    
+                    // Save back
+                    const saveResponse = await fetch('/api/prompts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(prompts)
+                    });
+                    
+                    if (!saveResponse.ok) throw new Error('Save failed');
+                },
+                {
+                    loadingText: 'Saving...',
+                    errorMessage: '❌ Failed to save orchestrator prompt',
+                    successMessage: '✅ Orchestrator prompt saved successfully!'
+                }
+            );
         });
     }
 
@@ -318,44 +357,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveSpecialistsBtn = document.getElementById('saveSpecialistsBtn');
     if (saveSpecialistsBtn) {
         saveSpecialistsBtn.addEventListener('click', async () => {
-            try {
-                saveSpecialistsBtn.disabled = true;
-                saveSpecialistsBtn.textContent = 'Saving...';
-                
-                // Get current prompts
-                const response = await fetch('/api/prompts');
-                const prompts = await response.json();
-                
-                // Update base prompt
-                prompts.specialist_base_prompt = document.getElementById('specialistBasePrompt').value;
-                
-                // Update specialist descriptions from DOM
-                const container = document.getElementById('specialistPromptsContainer');
-                if (container) {
-                    const cards = container.querySelectorAll('.specialist-card');
-                    cards.forEach(card => {
-                        const domain = card.dataset.domain;
-                        const textarea = document.getElementById(`${domain}-description`);
-                        if (domain && textarea && prompts.specialists && prompts.specialists[domain]) {
-                            prompts.specialists[domain].description = textarea.value;
-                        }
+            await handleAsyncButton(
+                saveSpecialistsBtn,
+                async () => {
+                    // Get current prompts
+                    const response = await fetch('/api/prompts');
+                    const prompts = await response.json();
+                    
+                    // Update base prompt
+                    prompts.specialist_base_prompt = document.getElementById('specialistBasePrompt').value;
+                    
+                    // Update specialist descriptions from DOM
+                    const container = document.getElementById('specialistPromptsContainer');
+                    if (container) {
+                        const cards = container.querySelectorAll('.specialist-card');
+                        cards.forEach(card => {
+                            const domain = card.dataset.domain;
+                            const textarea = document.getElementById(`${domain}-description`);
+                            if (domain && textarea && prompts.specialists && prompts.specialists[domain]) {
+                                prompts.specialists[domain].description = textarea.value;
+                            }
+                        });
+                    }
+                    
+                    // Save back
+                    const saveResponse = await fetch('/api/prompts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(prompts)
                     });
+                    
+                    if (!saveResponse.ok) throw new Error('Save failed');
+                },
+                {
+                    loadingText: 'Saving...',
+                    errorMessage: '❌ Failed to save specialist prompts',
+                    successMessage: '✅ Specialist prompts saved successfully!'
                 }
-                
-                // Save back
-                const saveResponse = await fetch('/api/prompts', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(prompts)
-                });
-                
-                if (!saveResponse.ok) throw new Error('Save failed');
-                
-                alert('✅ Specialist prompts saved successfully!');
-            } catch (error) {
-                console.error('Error:', error);
-                alert('❌ Failed to save specialist prompts');
-            }
+            );
         });
     }
 
