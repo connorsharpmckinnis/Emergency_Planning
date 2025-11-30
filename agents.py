@@ -25,9 +25,10 @@ def load_prompts():
 PROMPTS = load_prompts()
 
 class SpecialistAgent:
-    def __init__(self, domain: str, description: str, base_prompt: str = None, system_instruction: str = None):
+    def __init__(self, domain: str, description: str, display_name: str = None, base_prompt: str = None, system_instruction: str = None):
         self.domain = domain
         self.description = description
+        self.display_name = display_name or domain.capitalize()
         self.base_prompt = base_prompt
         self.system_instruction = system_instruction
         self.client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
@@ -50,7 +51,7 @@ Scenario Context:
 Generate a single detailed CascadingEffect object."""
         
         prompt = f"""
-        You are an expert in {self.domain}. {self.description}
+        You are an expert in {self.display_name}. {self.description}
         
         {prompt_template.format(scenario_context=scenario_context)}
         """
@@ -112,6 +113,7 @@ def create_specialists():
         domain: SpecialistAgent(
             domain=domain,
             description=config.get("description", ""),
+            display_name=config.get("display_name"),
             base_prompt=config.get("custom_prompt") or base_prompt,
             system_instruction=system_instruction
         )
@@ -134,5 +136,5 @@ def consult_specialist(domain: str, scenario_context: str) -> CascadingEffect:
         raise ValueError(f"Unknown specialist domain: {domain}")
     
     effect = agent.generate_cascading_effect(scenario_context)
-    effect.author = f"{agent.domain.capitalize()} Agent"
+    effect.author = f"{agent.display_name} Agent"
     return effect

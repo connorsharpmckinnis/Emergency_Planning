@@ -30,7 +30,7 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
     tools = [consult_specialist]
 
     # Get orchestrator prompt from config or use fallback
-    orchestrator_prompt = PROMPTS.get("orchestrator_prompt", """
+    orchestrator_prompt_template = PROMPTS.get("orchestrator_prompt", """
     You are the Orchestrator for an Emergency Scenario Generator for the Town of Apex, NC, USA. Apex is a suburban town outside in Wake County with a population of 80,000 people. It has a primarily suburban makeup with a small but active downtown center.
     Your goal is to create a comprehensive emergency scenario based on the topic: "{topic}".
 
@@ -42,14 +42,28 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
     Ensure the final output matches the EmergencyScenario schema.
     """)
     
+    # Dynamically build the list of specialists for the prompt
+    specialists_config = PROMPTS.get("specialists", {})
+    specialist_list_str = ""
+    for domain, config in specialists_config.items():
+        display_name = config.get("display_name", domain.capitalize())
+        description = config.get("description", "")
+        specialist_list_str += f"- {display_name} ({domain}): {description}\n"
+        
+    # Format the orchestrator prompt with the specialist list if the placeholder exists
+    if "{specialist_list}" in orchestrator_prompt_template:
+        orchestrator_prompt = orchestrator_prompt_template.format(specialist_list=specialist_list_str)
+    else:
+        orchestrator_prompt = orchestrator_prompt_template
+    
     # Debug: Print first 100 chars of orchestrator prompt to verify loading
     print(f"[ORCHESTRATOR] Using prompt: {orchestrator_prompt[:100]}...")
     
     # Initial prompt to get the base scenario and decide on specialists
     prompt = f"""{orchestrator_prompt}
-
-    Topic: {topic}
-    """
+ 
+     Topic: {topic}
+     """
 
     # We use models.generate_content with manual history management for full control
     # This allows us to:

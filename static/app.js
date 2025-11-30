@@ -1,33 +1,6 @@
 console.log('App.js script starting...');
 
-    // Magic Prompt Logic
-    window.generatePrompt = async function() {
-        const btn = document.getElementById('magicPromptBtn');
-        const input = document.getElementById('topicInput');
-        
-        if (!btn) return;
 
-        try {
-            btn.disabled = true;
-            btn.classList.add('loading');
-            
-            const response = await fetch('/generate-prompt-suggestion', {
-                method: 'POST'
-            });
-
-            if (!response.ok) throw new Error('Failed to generate prompt');
-
-            const data = await response.json();
-            input.value = data.prompt;
-            
-        } catch (error) {
-            console.error('Error generating prompt:', error);
-            alert('Failed to generate prompt suggestion.');
-        } finally {
-            btn.disabled = false;
-            btn.classList.remove('loading');
-        }
-    };
 
 document.addEventListener('DOMContentLoaded', () => {
     const generateBtn = document.getElementById('generateBtn');
@@ -116,6 +89,35 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingSection.classList.add('hidden');
         }
     });
+
+    // Magic Prompt Button Logic
+    const magicPromptBtn = document.getElementById('magicPromptBtn');
+    if (magicPromptBtn) {
+        magicPromptBtn.addEventListener('click', async () => {
+            if (magicPromptBtn.disabled) return;
+            
+            try {
+                magicPromptBtn.disabled = true;
+                magicPromptBtn.classList.add('loading');
+                
+                const response = await fetch('/generate-prompt-suggestion', {
+                    method: 'POST'
+                });
+
+                if (!response.ok) throw new Error('Failed to generate prompt');
+
+                const data = await response.json();
+                topicInput.value = data.prompt;
+                
+            } catch (error) {
+                console.error('Error generating prompt:', error);
+                alert(`Failed to generate prompt suggestion. ${error}`);
+            } finally {
+                magicPromptBtn.disabled = false;
+                magicPromptBtn.classList.remove('loading');
+            }
+        });
+    }
 
     // Store current scenario data for save/export
     let currentScenarioData = null;
@@ -249,14 +251,28 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('orchestratorPrompt').value = prompts.orchestrator_prompt || '';
             document.getElementById('specialistBasePrompt').value = prompts.specialist_base_prompt || '';
             
-            // Load specialist descriptions
-            const specialists = ['fire', 'police', 'medical', 'utilities', 'transport'];
-            specialists.forEach(domain => {
-                const textarea = document.getElementById(`${domain}-description`);
-                if (textarea && prompts.specialists && prompts.specialists[domain]) {
-                    textarea.value = prompts.specialists[domain].description || '';
-                }
-            });
+            // Render specialist cards dynamically
+            const container = document.getElementById('specialistPromptsContainer');
+            if (container && prompts.specialists) {
+                const specialists = Object.keys(prompts.specialists);
+                
+                // Helper to get emoji for domain
+                const getEmoji = (domain) => {
+                    const map = {
+                        'fire': '🔥', 'police': '👮', 'medical': '🏥', 
+                        'utilities': '⚡', 'transport': '🚗'
+                    };
+                    return map[domain] || '🔧';
+                };
+                
+                container.innerHTML = specialists.map(domain => `
+                    <div class="specialist-card" data-domain="${domain}">
+                        <h4>${getEmoji(domain)} ${domain.charAt(0).toUpperCase() + domain.slice(1)}</h4>
+                        <label>Description</label>
+                        <textarea id="${domain}-description" rows="3" placeholder="Describe focus areas...">${prompts.specialists[domain].description || ''}</textarea>
+                    </div>
+                `).join('');
+            }
         } catch (error) {
             console.error('Error loading prompts:', error);
             alert('Failed to load prompts configuration');
@@ -313,14 +329,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update base prompt
                 prompts.specialist_base_prompt = document.getElementById('specialistBasePrompt').value;
                 
-                // Update specialist descriptions
-                const specialists = ['fire', 'police', 'medical', 'utilities', 'transport'];
-                specialists.forEach(domain => {
-                    const textarea = document.getElementById(`${domain}-description`);
-                    if (textarea && prompts.specialists && prompts.specialists[domain]) {
-                        prompts.specialists[domain].description = textarea.value;
-                    }
-                });
+                // Update specialist descriptions from DOM
+                const container = document.getElementById('specialistPromptsContainer');
+                if (container) {
+                    const cards = container.querySelectorAll('.specialist-card');
+                    cards.forEach(card => {
+                        const domain = card.dataset.domain;
+                        const textarea = document.getElementById(`${domain}-description`);
+                        if (domain && textarea && prompts.specialists && prompts.specialists[domain]) {
+                            prompts.specialists[domain].description = textarea.value;
+                        }
+                    });
+                }
                 
                 // Save back
                 const saveResponse = await fetch('/api/prompts', {
@@ -335,12 +355,228 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error('Error:', error);
                 alert('❌ Failed to save specialist prompts');
-            } finally {
-                saveSpecialistsBtn.disabled = false;
-                saveSpecialistsBtn.innerHTML = '💾 Save All Specialist Prompts';
             }
         });
     }
+
+    // Vector Store File Management
+    const fileManager = {
+        currentDomain: 'fire',
+        
+        init() {
+            this.setupDynamicTabs();
+            this.setupUpload();
+            this.setupRefresh();
+            // loadFiles will be called after tabs are set up
+        },
+        
+        async setupDynamicTabs() {
+            const container = document.getElementById('domainTabsContainer');
+            if (!container) return;
+            
+            try {
+                // Fetch available specialists from prompts
+                const response = await fetch('/api/prompts');
+                if (!response.ok) throw new Error('Failed to load prompts');
+                const prompts = await response.json();
+                const specialists = Object.keys(prompts.specialists || {});
+                
+                if (specialists.length === 0) {
+                    container.innerHTML = '<div class="error-message">No specialists found</div>';
+                    return;
+                }
+                
+                // Set initial domain if not set or invalid
+                if (!this.currentDomain || !specialists.includes(this.currentDomain)) {
+                    this.currentDomain = specialists[0];
+                }
+                
+                // Render tabs
+                container.innerHTML = specialists.map(domain => {
+                    const label = domain.charAt(0).toUpperCase() + domain.slice(1);
+                    const isActive = domain === this.currentDomain ? 'active' : '';
+                    return `<button class="domain-tab ${isActive}" data-domain="${domain}">${label}</button>`;
+                }).join('');
+                
+                // Add event listeners
+                const tabs = container.querySelectorAll('.domain-tab');
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        tabs.forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        this.currentDomain = tab.dataset.domain;
+                        this.loadFiles();
+                    });
+                });
+                
+                // Initial load
+                this.loadFiles();
+                
+            } catch (error) {
+                console.error('Error setting up tabs:', error);
+                container.innerHTML = '<div class="error-message">Failed to load specialist tabs</div>';
+            }
+        },
+        
+        setupRefresh() {
+            const refreshBtn = document.getElementById('refreshFilesBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => this.loadFiles());
+            }
+        },
+        
+        async loadFiles() {
+            const container = document.getElementById('fileListContainer');
+            container.innerHTML = '<div class="empty-state">Loading files...</div>';
+            
+            try {
+                const response = await fetch(`/api/vector-stores/${this.currentDomain}/files`);
+                if (!response.ok) throw new Error('Failed to load files');
+                
+                const files = await response.json();
+                this.renderFiles(files);
+            } catch (error) {
+                console.error('Error loading files:', error);
+                container.innerHTML = '<div class="empty-state error">Failed to load files</div>';
+            }
+        },
+        
+        renderFiles(files) {
+            const container = document.getElementById('fileListContainer');
+            if (!files || files.length === 0) {
+                container.innerHTML = '<div class="empty-state">No files indexed for this domain</div>';
+                return;
+            }
+            
+            container.innerHTML = files.map(file => `
+                <div class="file-item">
+                    <div class="file-info">
+                        <span class="file-icon">📄</span>
+                        <div>
+                            <div class="file-name">${file.display_name || file.name}</div>
+                            <div class="file-meta">Uploaded: ${new Date(file.create_time).toLocaleDateString()}</div>
+                        </div>
+                    </div>
+                    <button class="delete-file-btn" data-id="${file.name}" title="Delete File">
+                        🗑️
+                    </button>
+                </div>
+            `).join('');
+            
+            // Add delete listeners
+            container.querySelectorAll('.delete-file-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => this.deleteFile(e.currentTarget.dataset.id));
+            });
+        },
+        
+        setupUpload() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const browseLink = document.getElementById('browseFilesLink');
+            
+            if (!uploadArea || !fileInput) return;
+            
+            // Click to browse
+            uploadArea.addEventListener('click', (e) => {
+                if (e.target !== browseLink) fileInput.click();
+            });
+            
+            browseLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                fileInput.click();
+            });
+            
+            // Drag & Drop
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, () => uploadArea.classList.add('dragover'), false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('dragover'), false);
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                this.handleFiles(files);
+            });
+            
+            fileInput.addEventListener('change', () => {
+                this.handleFiles(fileInput.files);
+            });
+        },
+        
+        async handleFiles(files) {
+            const status = document.getElementById('uploadStatus');
+            status.classList.remove('hidden', 'success', 'error');
+            status.classList.add('uploading');
+            status.textContent = `Uploading ${files.length} file(s)...`;
+            
+            let successCount = 0;
+            let errorCount = 0;
+            
+            for (const file of files) {
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    const response = await fetch(`/api/vector-stores/${this.currentDomain}/files`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) throw new Error('Upload failed');
+                    successCount++;
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    errorCount++;
+                }
+            }
+            
+            status.classList.remove('uploading');
+            if (errorCount === 0) {
+                status.classList.add('success');
+                status.textContent = `✅ Successfully uploaded ${successCount} file(s)`;
+                this.loadFiles();
+            } else {
+                status.classList.add('error');
+                status.textContent = `⚠️ Uploaded ${successCount} files, ${errorCount} failed`;
+            }
+            
+            // Clear status after 3 seconds
+            setTimeout(() => {
+                status.classList.add('hidden');
+            }, 3000);
+        },
+        
+        async deleteFile(fileId) {
+            if (!confirm('Are you sure you want to delete this file?')) return;
+            
+            try {
+                const response = await fetch(`/api/vector-stores/${this.currentDomain}/files/${encodeURIComponent(fileId)}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) throw new Error('Delete failed');
+                
+                this.loadFiles();
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert('Failed to delete file');
+            }
+        }
+    };
+
+    // Initialize File Manager
+    fileManager.init();
 
     function renderScenario(data) {
         // Store for save/export

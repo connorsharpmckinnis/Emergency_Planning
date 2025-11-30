@@ -1,13 +1,19 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
-from generator import generate_scenario_data, generate_response_plan, generate_prompt_suggestion
-from schemas import EmergencyScenario
-import json
+import uvicorn
 import os
+import shutil
+from pathlib import Path
+from generator import generate_scenario_data, generate_response_plan, generate_prompt_suggestion, EmergencyScenario
+from schemas import DraftResponsePlan
+import agents
+import generator
+import manage_knowledge
 from datetime import datetime
 from pathlib import Path
+import json
 
 app = FastAPI()
 
@@ -110,6 +116,56 @@ async def save_scenario(request: SaveScenarioRequest):
             "filename": filename,
             "path": str(filepath)
         })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- Vector Store Management Endpoints ---
+
+@app.get("/api/vector-stores/{domain}/files")
+async def list_vector_store_files(domain: str):
+    try:
+        files = manage_knowledge.list_files_in_store(domain)
+        return files
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/vector-stores/{domain}/files")
+async def upload_vector_store_file(domain: str, file: UploadFile = File(...)):
+    try:
+        # Save uploaded file temporarily
+        temp_dir = Path("temp_uploads")
+        temp_dir.mkdir(exist_ok=True)
+        temp_path = temp_dir / file.filename
+        
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        # Upload to vector store
+        result = manage_knowledge.upload_file_to_store(
+            domain=domain,
+            file_path=str(temp_path),
+            display_name=file.filename
+        )
+        
+        # Clean up temp file
+        os.remove(temp_path)
+        
+        return result
+    except Exception as e:
+        # Clean up temp file if it exists
+        if 'temp_path' in locals() and temp_path.exists():
+            os.remove(temp_path)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/vector-stores/{domain}/files/{file_id:path}")
+async def delete_vector_store_file(domain: str, file_id: str):
+    try:
+        # file_id might contain slashes (files/...), so we use :path in route
+        success = manage_knowledge.delete_file_from_store(domain, file_id)
+        if success:
+            return {"status": "success", "message": "File deleted"}
+        else:
+            raise HTTPException(status_code=404, detail="File not found or delete failed")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
