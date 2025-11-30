@@ -13,10 +13,23 @@ if os.path.exists("vector_store_mapping.json"):
     with open("vector_store_mapping.json", "r") as f:
         VECTOR_STORE_MAPPING = json.load(f)
 
+# Load prompts configuration
+def load_prompts():
+    """Load prompts from prompts.json"""
+    if os.path.exists("prompts.json"):
+        with open("prompts.json", "r") as f:
+            return json.load(f)
+    # Return empty dict if file doesn't exist (will use fallback prompts)
+    return {}
+
+PROMPTS = load_prompts()
+
 class SpecialistAgent:
-    def __init__(self, domain: str, description: str):
+    def __init__(self, domain: str, description: str, base_prompt: str = None, system_instruction: str = None):
         self.domain = domain
         self.description = description
+        self.base_prompt = base_prompt
+        self.system_instruction = system_instruction
         self.client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
         self.vector_store_name = VECTOR_STORE_MAPPING.get(domain)
 
@@ -24,33 +37,32 @@ class SpecialistAgent:
         """
         Generates a cascading effect relevant to the agent's domain based on the scenario context.
         """
+        # Use base_prompt from initialization or fallback to hardcoded
+        if self.base_prompt:
+            prompt_template = self.base_prompt
+        else:
+            prompt_template = """Based on the following emergency scenario context, identify a specific cascading effect 
+that would likely occur within your domain. If it is reasonable, feel free to instigate a 'new' emergency that could be caused by the cascading effect, for instance a flood causing an electrical fire at a critical facility.
+
+Scenario Context:
+{scenario_context}
+
+Generate a single detailed CascadingEffect object."""
+        
         prompt = f"""
         You are an expert in {self.domain}. {self.description}
         
-        Based on the following emergency scenario context, identify a specific cascading effect 
-        that would likely occur within your domain. If it is reasonable, feel free to instigate a 'new' emergency that could be caused by the cascading effect, for instance a flood causing an electrical fire at a critical facility.
-        
-        Scenario Context:
-        {scenario_context}
-        
-        Generate a single detailed CascadingEffect object.
+        {prompt_template.format(scenario_context=scenario_context)}
         """
 
-        system_prompt = "You are an expert in emergency management for the town of Apex, NC, USA. You write in a friendly, professional way. Apex NC is a suburban town with a population of 80,000 people, with a small but dynamic downtown area."
+        # Use system_instruction from initialization or fallback
+        system_prompt = self.system_instruction or "You are an expert in emergency management for the town of Apex, NC, USA. You write in a friendly, professional way. Apex NC is a suburban town with a population of 80,000 people, with a small but dynamic downtown area."
         
         if self.vector_store_name:
             print(f"[{self.domain}] Using vector store: {self.vector_store_name}")
-            # Add retrieval tool configuration
-            # Correct configuration for File Search uses the file_search field
-            tools = [
-                types.Tool(
-                    file_search=types.FileSearch(
-                        file_search_store_names=[self.vector_store_name]
-                    )
-                )
-            ]
             # Update prompt to encourage using retrieved info
-            prompt += "\n\nUse the available retrieval tool to find specific information about Apex's infrastructure, protocols, or resources relevant to this effect."
+            retrieval_prompt = PROMPTS.get("specialist_retrieval_prompt", "\n\nUse the available retrieval tool to find specific information about Apex's infrastructure, protocols, or resources relevant to this effect.")
+            prompt += retrieval_prompt
 
         config = types.GenerateContentConfig(
             system_instruction=system_prompt,
@@ -82,14 +94,36 @@ class SpecialistAgent:
         
         return CascadingEffect.model_validate_json(response_text)
 
-# Define available specialists
-specialists = {
-    "fire": SpecialistAgent("fire", "Focus on fire suppression, search and rescue, and hazardous materials."),
-    "police": SpecialistAgent("police", "Focus on public order, traffic control, and crime prevention."),
-    "medical": SpecialistAgent("medical", "Focus on triaging, hospital capacity, and public health."),
-    "utilities": SpecialistAgent("utilities", "Focus on power, water, gas, and telecommunications infrastructure."),
-    "transport": SpecialistAgent("transport", "Focus on road networks, public transit, and logistics."),
-}
+# Define available specialists using loaded prompts
+def create_specialists():
+    """Create specialist agents from prompts configuration"""
+    specialist_configs = PROMPTS.get("specialists", {
+        "fire": {"description": "Focus on fire suppression, search and rescue, and hazardous materials."},
+        "police": {"description": "Focus on public order, traffic control, and crime prevention."},
+        "medical": {"description": "Focus on triaging, hospital capacity, and public health."},
+        "utilities": {"description": "Focus on power, water, gas, and telecommunications infrastructure."},
+        "transport": {"description": "Focus on road networks, public transit, and logistics."},
+    })
+    
+    base_prompt = PROMPTS.get("specialist_base_prompt")
+    system_instruction = PROMPTS.get("system_instruction")
+    
+    return {
+        domain: SpecialistAgent(
+            domain=domain,
+            description=config.get("description", ""),
+            base_prompt=config.get("custom_prompt") or base_prompt,
+            system_instruction=system_instruction
+        )
+        for domain, config in specialist_configs.items()
+    }
+
+specialists = create_specialists()
+
+def reload_specialists():
+    """Reload specialists after prompts have been updated"""
+    global specialists
+    specialists = create_specialists()
 
 def consult_specialist(domain: str, scenario_context: str) -> CascadingEffect:
     """

@@ -237,6 +237,111 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Admin Tab Functionality
+    async function loadAdminPrompts() {
+        try {
+            const response = await fetch('/api/prompts');
+            if (!response.ok) throw new Error('Failed to load prompts');
+            
+            const prompts = await response.json();
+            
+            // Load orchestrator prompt
+            document.getElementById('orchestratorPrompt').value = prompts.orchestrator_prompt || '';
+            document.getElementById('specialistBasePrompt').value = prompts.specialist_base_prompt || '';
+            
+            // Load specialist descriptions
+            const specialists = ['fire', 'police', 'medical', 'utilities', 'transport'];
+            specialists.forEach(domain => {
+                const textarea = document.getElementById(`${domain}-description`);
+                if (textarea && prompts.specialists && prompts.specialists[domain]) {
+                    textarea.value = prompts.specialists[domain].description || '';
+                }
+            });
+        } catch (error) {
+            console.error('Error loading prompts:', error);
+            alert('Failed to load prompts configuration');
+        }
+    }
+
+    // Save orchestrator prompt
+    const saveOrchestratorBtn = document.getElementById('saveOrchestratorBtn');
+    if (saveOrchestratorBtn) {
+        saveOrchestratorBtn.addEventListener('click', async () => {
+            try {
+                saveOrchestratorBtn.disabled = true;
+                saveOrchestratorBtn.textContent = 'Saving...';
+                
+                // Get current prompts
+                const response = await fetch('/api/prompts');
+                const prompts = await response.json();
+                
+                // Update orchestrator prompt
+                prompts.orchestrator_prompt = document.getElementById('orchestratorPrompt').value;
+                
+                // Save back
+                const saveResponse = await fetch('/api/prompts', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(prompts)
+                });
+                
+                if (!saveResponse.ok) throw new Error('Save failed');
+                
+                alert('✅ Orchestrator prompt saved successfully!');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Failed to save orchestrator prompt');
+            } finally {
+                saveOrchestratorBtn.disabled = false;
+                saveOrchestratorBtn.innerHTML = '💾 Save Orchestrator Prompt';
+            }
+        });
+    }
+
+    // Save specialist prompts
+    const saveSpecialistsBtn = document.getElementById('saveSpecialistsBtn');
+    if (saveSpecialistsBtn) {
+        saveSpecialistsBtn.addEventListener('click', async () => {
+            try {
+                saveSpecialistsBtn.disabled = true;
+                saveSpecialistsBtn.textContent = 'Saving...';
+                
+                // Get current prompts
+                const response = await fetch('/api/prompts');
+                const prompts = await response.json();
+                
+                // Update base prompt
+                prompts.specialist_base_prompt = document.getElementById('specialistBasePrompt').value;
+                
+                // Update specialist descriptions
+                const specialists = ['fire', 'police', 'medical', 'utilities', 'transport'];
+                specialists.forEach(domain => {
+                    const textarea = document.getElementById(`${domain}-description`);
+                    if (textarea && prompts.specialists && prompts.specialists[domain]) {
+                        prompts.specialists[domain].description = textarea.value;
+                    }
+                });
+                
+                // Save back
+                const saveResponse = await fetch('/api/prompts', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(prompts)
+                });
+                
+                if (!saveResponse.ok) throw new Error('Save failed');
+                
+                alert('✅ Specialist prompts saved successfully!');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Failed to save specialist prompts');
+            } finally {
+                saveSpecialistsBtn.disabled = false;
+                saveSpecialistsBtn.innerHTML = '💾 Save All Specialist Prompts';
+            }
+        });
+    }
+
     function renderScenario(data) {
         // Store for save/export
         currentScenarioData = data;
@@ -327,62 +432,18 @@ document.addEventListener('DOMContentLoaded', () => {
             effectsList.appendChild(card);
         });
 
-        // Orchestrator Thinking (Footer)
+        // Show Orchestrator Thinking if available
         const thinkingFooter = document.getElementById('thinkingFooter');
-        const thinkingContent = document.getElementById('thinkingContent');
-        
         if (data.thoughts && data.thoughts.length > 0) {
             thinkingFooter.style.display = 'block';
-            thinkingContent.innerHTML = '';
-            data.thoughts.forEach((thought, index) => {
-                const thoughtDiv = document.createElement('div');
-                thoughtDiv.className = 'thought-item';
-                thoughtDiv.innerHTML = `<strong>Step ${index + 1}:</strong> ${thought.content}`;
-                thinkingContent.appendChild(thoughtDiv);
-            });
+            const thinkingContent = document.getElementById('thinkingContent');
+            thinkingContent.innerHTML = data.thoughts.map(t => 
+                `<div class="thought-item">
+                    <p>${t.content}</p>
+                 </div>`
+            ).join('');
         } else {
             thinkingFooter.style.display = 'none';
-        }
-
-        // Specialist Agent Debug Section
-        const debugFooter = document.getElementById('debugFooter');
-        const debugContent = document.getElementById('debugContent');
-        
-        if (data.cascading_effects && data.cascading_effects.length > 0) {
-            debugFooter.style.display = 'block';
-            debugContent.innerHTML = '';
-            
-            data.cascading_effects.forEach((effect, index) => {
-                const debugDiv = document.createElement('div');
-                debugDiv.className = 'debug-agent-output';
-                
-                const probability = effect.probability !== null && effect.probability !== undefined 
-                    ? `<div class="debug-agent-field">
-                         <strong>Probability</strong>
-                         <div class="debug-agent-field-value">${(effect.probability * 100).toFixed(0)}%</div>
-                       </div>` 
-                    : '';
-                
-                debugDiv.innerHTML = `
-                    <div class="debug-agent-name">${effect.author || 'Unknown Agent'} - Effect #${index + 1}</div>
-                    <div class="debug-agent-field">
-                        <strong>Cause</strong>
-                        <div class="debug-agent-field-value">${effect.cause}</div>
-                    </div>
-                    <div class="debug-agent-field">
-                        <strong>Effect</strong>
-                        <div class="debug-agent-field-value">${effect.effect}</div>
-                    </div>
-                    <div class="debug-agent-field">
-                        <strong>Impacted Systems</strong>
-                        <div class="debug-agent-field-value">${effect.impacted_systems.join(', ')}</div>
-                    </div>
-                    ${probability}
-                `;
-                debugContent.appendChild(debugDiv);
-            });
-        } else {
-            debugFooter.style.display = 'none';
         }
     }
 
@@ -393,16 +454,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const content = document.getElementById('thinkingContent');
             content.classList.toggle('hidden');
             toggleThinking.classList.toggle('active');
-        });
-    }
-
-    // Toggle debug section
-    const toggleDebug = document.getElementById('toggleDebug');
-    if (toggleDebug) {
-        toggleDebug.addEventListener('click', () => {
-            const content = document.getElementById('debugContent');
-            content.classList.toggle('hidden');
-            toggleDebug.classList.toggle('active');
         });
     }
 
@@ -418,7 +469,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Add active class to clicked
             btn.classList.add('active');
-            document.getElementById(`${btn.dataset.tab}Tab`).classList.add('active');
+            const tabId = `${btn.dataset.tab}Tab`;
+            document.getElementById(tabId).classList.add('active');
+            
+            // Load admin prompts when switching to admin tab
+            if (btn.dataset.tab === 'admin') {
+                loadAdminPrompts();
+            }
         });
     });
 

@@ -54,6 +54,42 @@ async def generate_prompt_suggestion_endpoint():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/prompts")
+async def get_prompts():
+    """Return current prompt configuration"""
+    try:
+        prompts_file = Path("prompts.json")
+        if not prompts_file.exists():
+            raise HTTPException(status_code=404, detail="Prompts configuration file not found")
+        
+        with open(prompts_file, "r") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Invalid JSON in prompts.json: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/prompts")
+async def update_prompts(prompts: dict):
+    """Update prompt configuration"""
+    try:
+        # Save to file
+        with open("prompts.json", "w") as f:
+            json.dump(prompts, f, indent=2)
+        
+        # Reload prompts in agents module
+        import agents
+        agents.PROMPTS = agents.load_prompts()
+        agents.reload_specialists()
+        
+        # Reload prompts in generator module
+        import generator
+        generator.PROMPTS = generator.load_prompts()
+        
+        return {"status": "success", "message": "Prompts updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/save-scenario")
 async def save_scenario(request: SaveScenarioRequest):
     try:

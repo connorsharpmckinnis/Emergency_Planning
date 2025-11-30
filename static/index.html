@@ -12,6 +12,7 @@
     />
     <link rel="stylesheet" href="/static/style.css" />
     <link rel="stylesheet" href="/static/ui_styles.css" />
+    <link rel="stylesheet" href="/static/admin_styles.css" />
   </head>
   <body>
     <div class="container">
@@ -23,6 +24,7 @@
       <div class="tabs">
         <button class="tab-btn active" data-tab="generator">Disaster Generator</button>
         <button class="tab-btn" data-tab="planner">Response Planner</button>
+        <button class="tab-btn" data-tab="admin">⚙️ Admin</button>
       </div>
 
       <main>
@@ -115,15 +117,6 @@
                     </button>
                     <div class="thinking-content hidden" id="thinkingContent"></div>
                 </div>
-
-                <!-- Specialist Agent Debug Section -->
-                <div class="debug-footer" id="debugFooter" style="display: none;">
-                    <button class="debug-toggle" id="toggleDebug">
-                        <span>🔧 View Specialist Agent Outputs (Debug)</span>
-                        <span class="toggle-icon">▼</span>
-                    </button>
-                    <div class="debug-content hidden" id="debugContent"></div>
-                </div>
             </div>
         </div>
 
@@ -159,8 +152,97 @@
                 </div>
             </div>
         </div>
+
+        <!-- ADMIN TAB -->
+        <div id="adminTab" class="tab-content">
+            <div class="admin-container">
+                <!-- Orchestrator Section -->
+                <section class="admin-section">
+                    <h3>🎯 Orchestrator Prompt</h3>
+                    <p class="section-description">Configure the main orchestrator AI that coordinates specialist agents</p>
+                    <textarea id="orchestratorPrompt" rows="8" placeholder="Enter orchestrator prompt..."></textarea>
+                    <button id="saveOrchestratorBtn" class="primary-btn">💾 Save Orchestrator Prompt</button>
+                </section>
+
+                <!-- Specialist Prompts Section -->
+                <section class="admin-section">
+                    <h3>👥 Specialist Agent Configuration</h3>
+                    <p class="section-description">Configure base prompts and individual specialist behaviors</p>
+                    
+                    <!-- Base Prompt -->
+                    <div class="prompt-editor">
+                        <label><strong>Base Prompt (Shared by All Specialists)</strong></label>
+                        <textarea id="specialistBasePrompt" rows="6" placeholder="Enter base prompt for all specialists..."></textarea>
+                    </div>
+                    
+                    <!-- Individual Specialists -->
+                    <div class="specialist-grid">
+                        <div class="specialist-card" data-domain="fire">
+                            <h4>🔥 Fire & Rescue</h4>
+                            <label>Description</label>
+                            <textarea id="fire-description" rows="3" placeholder="Describe focus areas..."></textarea>
+                        </div>
+                        <div class="specialist-card" data-domain="police">
+                            <h4>👮 Police</h4>
+                            <label>Description</label>
+                            <textarea id="police-description" rows="3" placeholder="Describe focus areas..."></textarea>
+                        </div>
+                        <div class="specialist-card" data-domain="medical">
+                            <h4>🏥 Medical</h4>
+                            <label>Description</label>
+                            <textarea id="medical-description" rows="3" placeholder="Describe focus areas..."></textarea>
+                        </div>
+                        <div class="specialist-card" data-domain="utilities">
+                            <h4>⚡ Utilities</h4>
+                            <label>Description</label>
+                            <textarea id="utilities-description" rows="3" placeholder="Describe focus areas..."></textarea>
+                        </div>
+                        <div class="specialist-card" data-domain="transport">
+                            <h4>🚗 Transport</h4>
+                            <label>Description</label>
+                            <textarea id="transport-description" rows="3" placeholder="Describe focus areas..."></textarea>
+                        </div>
+                    </div>
+                    <button id="saveSpecialistsBtn" class="primary-btn">💾 Save All Specialist Prompts</button>
+                </section>
+
+                <!-- Future: Vector Store Management (Placeholder) -->
+                <section class="admin-section disabled">
+                    <h3>📁 Vector Store Management <span class="coming-soon">Coming Soon</span></h3>
+                    <p class="section-description">Upload and manage knowledge base files for each specialist</p>
+                    <div class="file-management-placeholder">
+                        <div class="future-features">
+                            <h4>Planned Features:</h4>
+                            <ul>
+                                <li>📤 Upload PDF/text files to specialist vector stores</li>
+                                <li>📋 View existing files per specialist domain</li>
+                                <li>🗑️ Remove outdated files from vector stores</li>
+                                <li>📊 Monitor vector store usage and performance</li>
+                            </ul>
+                        </div>
+                        <div class="specialist-files-preview">
+                            <div class="file-card disabled">
+                                <h4>🔥 Fire & Rescue Files</h4>
+                                <p class="file-count">0 files</p>
+                                <button class="secondary-btn" disabled>Manage Files</button>
+                            </div>
+                            <div class="file-card disabled">
+                                <h4>👮 Police Files</h4>
+                                <p class="file-count">0 files</p>
+                                <button class="secondary-btn" disabled>Manage Files</button>
+                            </div>
+                            <div class="file-card disabled">
+                                <h4>🏥 Medical Files</h4>
+                                <p class="file-count">0 files</p>
+                                <button class="secondary-btn" disabled>Manage Files</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
       </main>
     </div>
-    <script src="/static/app.js?v=2"></script>
+    <script src="/static/app.js?v=3"></script>
   </body>
 </html>

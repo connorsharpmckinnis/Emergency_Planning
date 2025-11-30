@@ -1,11 +1,24 @@
 import os
+import json
 from google import genai
 from google.genai import types
 from schemas import EmergencyScenario, CascadingEffect, ThoughtSummary, DraftResponsePlan
 from agents import consult_specialist
+from datetime import datetime
 import dotenv
 
 dotenv.load_dotenv()
+
+# Load prompts configuration
+def load_prompts():
+    """Load prompts from prompts.json"""
+    if os.path.exists("prompts.json"):
+        with open("prompts.json", "r") as f:
+            return json.load(f)
+    return {}
+
+PROMPTS = load_prompts()
+
 
 def generate_scenario_data(topic: str) -> EmergencyScenario:
     """
@@ -16,8 +29,8 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
     # Define the tool for the orchestrator
     tools = [consult_specialist]
 
-    # Initial prompt to get the base scenario and decide on specialists
-    prompt = f"""
+    # Get orchestrator prompt from config or use fallback
+    orchestrator_prompt = PROMPTS.get("orchestrator_prompt", """
     You are the Orchestrator for an Emergency Scenario Generator for the Town of Apex, NC, USA. Apex is a suburban town outside in Wake County with a population of 80,000 people. It has a primarily suburban makeup with a small but active downtown center.
     Your goal is to create a comprehensive emergency scenario based on the topic: "{topic}".
 
@@ -27,47 +40,27 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
     4. Finally, aggregate everything into a single EmergencyScenario object.
     
     Ensure the final output matches the EmergencyScenario schema.
+    """)
+    
+    # Debug: Print first 100 chars of orchestrator prompt to verify loading
+    print(f"[ORCHESTRATOR] Using prompt: {orchestrator_prompt[:100]}...")
+    
+    # Initial prompt to get the base scenario and decide on specialists
+    prompt = f"""{orchestrator_prompt}
+
+    Topic: {topic}
     """
 
-    # We need a multi-turn conversation to handle tool calls
-    chat = client.chats.create(
-        model="gemini-2.5-flash",
-        config=types.GenerateContentConfig(
-            tools=tools,
-            response_mime_type="application/json",
-            response_schema=EmergencyScenario
-        )
-    )
-
-    # Send the initial prompt
-    # Note: With the current SDK and "response_schema" set, the model might try to output JSON immediately 
-    # instead of calling tools if we are not careful. 
-    # However, "automatic_function_calling" is not strictly default in the simplest `generate_content` 
-    # but `chats.create` handles history.
-    # A better approach for strict JSON + Tools is to let the model call tools first, 
-    # then force JSON in the final turn. 
-    # But `response_schema` is often global for the request.
+    # We use models.generate_content with manual history management for full control
+    # This allows us to:
+    # 1. Handle multi-turn tool calling loops
+    # 2. Extract thoughts from responses
+    # 3. Enforce JSON schema only at the final turn (avoiding conflicts with tool calling)
     
-    # Let's try a slightly different approach: 
-    # We will NOT enforce the schema on the FIRST turn to allow tool calling text/thought process,
-    # OR we rely on the model to use the tool BEFORE producing the final JSON.
+    model_id = "gemini-2.5-flash-lite"
     
-    # Actually, the user asked for a loop. Let's implement a manual loop for better control 
-    # and to ensure we get the JSON at the end.
-    
-    # Re-initializing client for manual control without chat helper for now to be explicit
-    
-    model_id = "gemini-2.5-flash"
-    
-    # Step 1: Orchestrator Plan & Tool Calls
-    # We ask for a list of specialists to call first, or we let it call them.
-    # To simplify, let's use the `generate_content` with tools and see if it returns a function call.
-    
-    # We can't easily mix "force JSON schema" and "function calling" in a single turn if the schema doesn't include the function call.
-    # So we will do this in two stages.
-    
-    # Stage 1: Get the core scenario and decide on specialists (Natural Language or structured tool calls)
-    # Let's ask it to call tools.
+    # Stage 1: Let the orchestrator call specialist tools to gather cascading effects
+    # We do NOT set response_schema here so it can freely call tools
     
     response = client.models.generate_content(
         model=model_id,
@@ -77,7 +70,6 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
             thinking_config=types.ThinkingConfig(
                 include_thoughts=True
             )
-            # We do NOT set response_schema here so it can call tools
         )
     )
 
@@ -85,6 +77,12 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
     # We'll collect the cascading effects manually
     cascading_effects = []
     thoughts = []  # Collect thought summaries
+    
+    # Validate initial response
+    if not response.candidates or not response.candidates[0].content.parts:
+        print(f"ERROR: Empty initial response from model")
+        print(f"Response: {response}")
+        raise ValueError(f"Model returned empty response. Finish reason: {response.candidates[0].finish_reason if response.candidates else 'No candidates'}")
     
     # Simple loop to handle up to 5 turns of tool calls
     current_response = response
@@ -95,7 +93,11 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
     
     # Extract thoughts from the first response
     for part in current_response.candidates[0].content.parts:
-        if part.thought and part.text:
+        # Capture explicit thoughts (thinking models) or regular text (standard models reasoning)
+        if part.thought:
+            thoughts.append(ThoughtSummary(content=part.text))
+        elif part.text and not part.function_call:
+            # For standard models, text before tool calls is effectively "thinking"
             thoughts.append(ThoughtSummary(content=part.text))
 
     while True:
@@ -153,18 +155,29 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
              )
              history.append(current_response.candidates[0].content)
              
+             # Check for empty response
+             if not current_response.candidates[0].content.parts:
+                 print(f"WARNING: Empty response in tool loop, stopping")
+                 break
+             
              # Extract thoughts from this response
              for part in current_response.candidates[0].content.parts:
-                 if part.thought and part.text:
+                 if part.thought:
+                     thoughts.append(ThoughtSummary(content=part.text))
+                 elif part.text and not part.function_call:
                      thoughts.append(ThoughtSummary(content=part.text))
         else:
             break
 
     # Stage 2: Final Aggregation
     # Now we ask the model to produce the final JSON, incorporating the tool results (which are in history)
-    final_prompt = """
-    Based on the initial topic and the specialist consultations above, generate the final full EmergencyScenario JSON.
-    Ensure you include the cascading effects provided by the specialists.
+    # IMPORTANT: Include the original orchestrator prompt so writing style carries through
+    final_prompt = f"""
+    {orchestrator_prompt}
+    
+    Based on the topic "{topic}" and the specialist consultations above, generate the final full EmergencyScenario JSON.
+    Ensure you include all cascading effects provided by the specialists.
+    Write the narrative and description fields following your role and style as the Emergency Management Orchestrator.
     """
     
     history.append(types.Content(role="user", parts=[types.Part(text=final_prompt)]))
@@ -183,7 +196,7 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
     
     # Extract final thoughts
     for part in final_response.candidates[0].content.parts:
-        if part.thought and part.text:
+        if part.thought:
             thoughts.append(ThoughtSummary(content=part.text))
 
     scenario = EmergencyScenario.model_validate_json(final_response.text)
@@ -196,7 +209,7 @@ def generate_response_plan(scenario_context: str) -> DraftResponsePlan:
     Generates a draft response plan based on the provided scenario context.
     """
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-    model_id = "gemini-2.5-flash"
+    model_id = "gemini-2.5-flash-lite"
 
     prompt = f"""
     You are an expert Emergency Response Planner for Apex, NC.
@@ -228,7 +241,7 @@ def generate_prompt_suggestion() -> str:
     Generates a creative emergency scenario prompt suggestion.
     """
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-    model_id = "gemini-2.5-flash"
+    model_id = "gemini-2.5-flash-lite"
 
     prompt = """
     Generate a creative, detailed, and realistic emergency scenario prompt for the town of Apex, NC.
