@@ -56,8 +56,8 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
     else:
         orchestrator_prompt = orchestrator_prompt_template
     
-    # Debug: Print first 100 chars of orchestrator prompt to verify loading
-    print(f"[ORCHESTRATOR] Using prompt: {orchestrator_prompt[:100]}...")
+    # Debug: Print full orchestrator prompt to verify loading and injection
+    print(f"[ORCHESTRATOR] Full Prompt:\n{orchestrator_prompt}")
     
     # Initial prompt to get the base scenario and decide on specialists
     prompt = f"""{orchestrator_prompt}

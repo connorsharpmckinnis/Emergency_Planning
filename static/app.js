@@ -58,11 +58,11 @@ document.addEventListener('DOMContentLoaded', () => {
             errorMessage = 'Operation failed. Please try again.',
             successMessage = null
         } = options;
-        
+
         // Save original state
         const originalContent = button.innerHTML;
         const originalDisabled = button.disabled;
-        
+
         try {
             // Set loading state
             button.disabled = true;
@@ -75,10 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     button.innerHTML = loadingText;
                 }
             }
-            
+
             // Execute the async operation
             const result = await asyncOperation();
-            
+
             // Show success message if provided
             if (successMessage) {
                 if (typeof successMessage === 'function') {
@@ -87,14 +87,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert(successMessage);
                 }
             }
-            
+
             return result;
-            
+
         } catch (error) {
             console.error('Error:', error);
             alert(errorMessage);
             throw error;
-            
+
         } finally {
             // Restore original state
             button.disabled = originalDisabled;
@@ -135,10 +135,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const scenario = await response.json();
-            
+
             // Small delay for smooth transition
             await new Promise(resolve => setTimeout(resolve, 300));
-            
+
             renderScenario(scenario);
             resultSection.classList.remove('hidden');
         } catch (error) {
@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (magicPromptBtn) {
         magicPromptBtn.addEventListener('click', async () => {
             if (magicPromptBtn.disabled) return;
-            
+
             await handleAsyncButton(
                 magicPromptBtn,
                 async () => {
@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (saveJsonBtn) {
         saveJsonBtn.addEventListener('click', async () => {
             if (!currentScenarioData) return;
-            
+
             await handleAsyncButton(
                 saveJsonBtn,
                 async () => {
@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (exportPdfBtn) {
         exportPdfBtn.addEventListener('click', async () => {
             if (!currentScenarioData) return;
-            
+
             await handleAsyncButton(
                 exportPdfBtn,
                 async () => {
@@ -221,19 +221,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         body: JSON.stringify({ scenario: currentScenarioData })
                     });
                     if (!response.ok) throw new Error('PDF export failed');
-                    
+
                     // Download the PDF
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    
+
                     // Extract filename from Content-Disposition header or use default
                     const contentDisposition = response.headers.get('content-disposition');
-                    const filename = contentDisposition 
+                    const filename = contentDisposition
                         ? contentDisposition.split('filename=')[1].replace(/"/g, '')
                         : 'scenario.pdf';
-                    
+
                     a.download = filename;
                     document.body.appendChild(a);
                     a.click();
@@ -254,25 +254,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (draftResponseBtn) {
         draftResponseBtn.addEventListener('click', async () => {
             if (!currentScenarioData) return;
-            
+
             // Switch to planner tab
             const plannerTabBtn = document.querySelector('[data-tab="planner"]');
             const generatorTab = document.getElementById('generatorTab');
             const plannerTab = document.getElementById('plannerTab');
             const tabBtns = document.querySelectorAll('.tab-btn');
-            
+
             // Update tab buttons
             tabBtns.forEach(btn => btn.classList.remove('active'));
             plannerTabBtn.classList.add('active');
-            
+
             // Update tab content
             generatorTab.classList.remove('active');
             plannerTab.classList.add('active');
-            
+
             // Populate planner input with JSON
             const plannerInput = document.getElementById('plannerInput');
             plannerInput.value = JSON.stringify(currentScenarioData, null, 2);
-            
+
             // Trigger generate plan button after a short delay to ensure UI updates
             setTimeout(() => {
                 const generatePlanBtn = document.getElementById('generatePlanBtn');
@@ -286,39 +286,139 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/api/prompts');
             if (!response.ok) throw new Error('Failed to load prompts');
-            
+
             const prompts = await response.json();
-            
+
             // Load orchestrator prompt
             document.getElementById('orchestratorPrompt').value = prompts.orchestrator_prompt || '';
             document.getElementById('specialistBasePrompt').value = prompts.specialist_base_prompt || '';
-            
+
             // Render specialist cards dynamically
             const container = document.getElementById('specialistPromptsContainer');
             if (container && prompts.specialists) {
                 const specialists = Object.keys(prompts.specialists);
-                
+
                 // Helper to get emoji for domain
                 const getEmoji = (domain) => {
                     const map = {
-                        'fire': '🔥', 'police': '👮', 'medical': '🏥', 
-                        'utilities': '⚡', 'transport': '🚗'
+                        'fire': '🔥', 'police': '👮', 'medical': '🏥',
+                        'utilities': '⚡', 'transport': '🚗', 'logistics': '🚚',
+                        'communications': '📡', 'hazmat': '☣️'
                     };
-                    return map[domain] || '🔧';
+                    return map[domain] || '🤖';
                 };
-                
+
                 container.innerHTML = specialists.map(domain => `
                     <div class="specialist-card" data-domain="${domain}">
-                        <h4>${getEmoji(domain)} ${domain.charAt(0).toUpperCase() + domain.slice(1)}</h4>
+                        <div class="card-header-row">
+                            <h4>${getEmoji(domain)} ${domain.charAt(0).toUpperCase() + domain.slice(1)}</h4>
+                            <button class="icon-btn delete-specialist-btn" data-domain="${domain}" title="Delete Agent">🗑️</button>
+                        </div>
                         <label>Description</label>
                         <textarea id="${domain}-description" rows="3" placeholder="Describe focus areas...">${prompts.specialists[domain].description || ''}</textarea>
                     </div>
                 `).join('');
+
+                // Add delete listeners
+                container.querySelectorAll('.delete-specialist-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const domain = e.currentTarget.dataset.domain;
+                        if (confirm(`Are you sure you want to delete the ${domain} agent?`)) {
+                            await deleteSpecialist(domain);
+                        }
+                    });
+                });
             }
         } catch (error) {
             console.error('Error loading prompts:', error);
             alert('Failed to load prompts configuration');
         }
+    }
+
+    // Delete Specialist
+    async function deleteSpecialist(domain) {
+        try {
+            const response = await fetch('/api/prompts');
+            const prompts = await response.json();
+
+            if (prompts.specialists && prompts.specialists[domain]) {
+                delete prompts.specialists[domain];
+
+                const saveResponse = await fetch('/api/prompts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(prompts)
+                });
+
+                if (!saveResponse.ok) throw new Error('Save failed');
+
+                // Reload UI
+                loadAdminPrompts();
+            }
+        } catch (error) {
+            console.error('Error deleting specialist:', error);
+            alert('Failed to delete specialist');
+        }
+    }
+
+    // Add Specialist
+    const addSpecialistBtn = document.getElementById('addSpecialistBtn');
+    if (addSpecialistBtn) {
+        addSpecialistBtn.addEventListener('click', async () => {
+            const domainInput = document.getElementById('newSpecialistDomain');
+            const descInput = document.getElementById('newSpecialistDescription');
+
+            const domain = domainInput.value.trim().toLowerCase();
+            const description = descInput.value.trim();
+
+            if (!domain || !description) {
+                alert('Please enter both a domain name and description.');
+                return;
+            }
+
+            // Basic validation for domain name (alphanumeric only)
+            if (!/^[a-z0-9_]+$/.test(domain)) {
+                alert('Domain name should only contain lowercase letters, numbers, and underscores.');
+                return;
+            }
+
+            await handleAsyncButton(
+                addSpecialistBtn,
+                async () => {
+                    const response = await fetch('/api/prompts');
+                    const prompts = await response.json();
+
+                    if (!prompts.specialists) prompts.specialists = {};
+
+                    if (prompts.specialists[domain]) {
+                        throw new Error('An agent with this domain already exists.');
+                    }
+
+                    prompts.specialists[domain] = {
+                        description: description,
+                        custom_prompt: null
+                    };
+
+                    const saveResponse = await fetch('/api/prompts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(prompts)
+                    });
+
+                    if (!saveResponse.ok) throw new Error('Save failed');
+
+                    // Clear inputs and reload
+                    domainInput.value = '';
+                    descInput.value = '';
+                    loadAdminPrompts();
+                },
+                {
+                    loadingText: 'Adding...',
+                    errorMessage: (err) => `Failed to add agent: ${err.message || 'Unknown error'}`,
+                    successMessage: 'Agent added successfully!'
+                }
+            );
+        });
     }
 
     // Save orchestrator prompt
@@ -331,17 +431,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Get current prompts
                     const response = await fetch('/api/prompts');
                     const prompts = await response.json();
-                    
+
                     // Update orchestrator prompt
                     prompts.orchestrator_prompt = document.getElementById('orchestratorPrompt').value;
-                    
+
                     // Save back
                     const saveResponse = await fetch('/api/prompts', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(prompts)
                     });
-                    
+
                     if (!saveResponse.ok) throw new Error('Save failed');
                 },
                 {
@@ -363,10 +463,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Get current prompts
                     const response = await fetch('/api/prompts');
                     const prompts = await response.json();
-                    
+
                     // Update base prompt
                     prompts.specialist_base_prompt = document.getElementById('specialistBasePrompt').value;
-                    
+
                     // Update specialist descriptions from DOM
                     const container = document.getElementById('specialistPromptsContainer');
                     if (container) {
@@ -379,14 +479,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         });
                     }
-                    
+
                     // Save back
                     const saveResponse = await fetch('/api/prompts', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(prompts)
                     });
-                    
+
                     if (!saveResponse.ok) throw new Error('Save failed');
                 },
                 {
@@ -401,42 +501,42 @@ document.addEventListener('DOMContentLoaded', () => {
     // Vector Store File Management
     const fileManager = {
         currentDomain: 'fire',
-        
+
         init() {
             this.setupDynamicTabs();
             this.setupUpload();
             this.setupRefresh();
             // loadFiles will be called after tabs are set up
         },
-        
+
         async setupDynamicTabs() {
             const container = document.getElementById('domainTabsContainer');
             if (!container) return;
-            
+
             try {
                 // Fetch available specialists from prompts
                 const response = await fetch('/api/prompts');
                 if (!response.ok) throw new Error('Failed to load prompts');
                 const prompts = await response.json();
                 const specialists = Object.keys(prompts.specialists || {});
-                
+
                 if (specialists.length === 0) {
                     container.innerHTML = '<div class="error-message">No specialists found</div>';
                     return;
                 }
-                
+
                 // Set initial domain if not set or invalid
                 if (!this.currentDomain || !specialists.includes(this.currentDomain)) {
                     this.currentDomain = specialists[0];
                 }
-                
+
                 // Render tabs
                 container.innerHTML = specialists.map(domain => {
                     const label = domain.charAt(0).toUpperCase() + domain.slice(1);
                     const isActive = domain === this.currentDomain ? 'active' : '';
                     return `<button class="domain-tab ${isActive}" data-domain="${domain}">${label}</button>`;
                 }).join('');
-                
+
                 // Add event listeners
                 const tabs = container.querySelectorAll('.domain-tab');
                 tabs.forEach(tab => {
@@ -447,31 +547,31 @@ document.addEventListener('DOMContentLoaded', () => {
                         this.loadFiles();
                     });
                 });
-                
+
                 // Initial load
                 this.loadFiles();
-                
+
             } catch (error) {
                 console.error('Error setting up tabs:', error);
                 container.innerHTML = '<div class="error-message">Failed to load specialist tabs</div>';
             }
         },
-        
+
         setupRefresh() {
             const refreshBtn = document.getElementById('refreshFilesBtn');
             if (refreshBtn) {
                 refreshBtn.addEventListener('click', () => this.loadFiles());
             }
         },
-        
+
         async loadFiles() {
             const container = document.getElementById('fileListContainer');
             container.innerHTML = '<div class="empty-state">Loading files...</div>';
-            
+
             try {
                 const response = await fetch(`/api/vector-stores/${this.currentDomain}/files`);
                 if (!response.ok) throw new Error('Failed to load files');
-                
+
                 const files = await response.json();
                 this.renderFiles(files);
             } catch (error) {
@@ -479,14 +579,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 container.innerHTML = '<div class="empty-state error">Failed to load files</div>';
             }
         },
-        
+
         renderFiles(files) {
             const container = document.getElementById('fileListContainer');
             if (!files || files.length === 0) {
                 container.innerHTML = '<div class="empty-state">No files indexed for this domain</div>';
                 return;
             }
-            
+
             container.innerHTML = files.map(file => `
                 <div class="file-item">
                     <div class="file-info">
@@ -501,77 +601,77 @@ document.addEventListener('DOMContentLoaded', () => {
                     </button>
                 </div>
             `).join('');
-            
+
             // Add delete listeners
             container.querySelectorAll('.delete-file-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => this.deleteFile(e.currentTarget.dataset.id));
             });
         },
-        
+
         setupUpload() {
             const uploadArea = document.getElementById('uploadArea');
             const fileInput = document.getElementById('fileInput');
             const browseLink = document.getElementById('browseFilesLink');
-            
+
             if (!uploadArea || !fileInput) return;
-            
+
             // Click to browse
             uploadArea.addEventListener('click', (e) => {
                 if (e.target !== browseLink) fileInput.click();
             });
-            
+
             browseLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 fileInput.click();
             });
-            
+
             // Drag & Drop
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                 uploadArea.addEventListener(eventName, preventDefaults, false);
             });
-            
+
             function preventDefaults(e) {
                 e.preventDefault();
                 e.stopPropagation();
             }
-            
+
             ['dragenter', 'dragover'].forEach(eventName => {
                 uploadArea.addEventListener(eventName, () => uploadArea.classList.add('dragover'), false);
             });
-            
+
             ['dragleave', 'drop'].forEach(eventName => {
                 uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('dragover'), false);
             });
-            
+
             uploadArea.addEventListener('drop', (e) => {
                 const files = e.dataTransfer.files;
                 this.handleFiles(files);
             });
-            
+
             fileInput.addEventListener('change', () => {
                 this.handleFiles(fileInput.files);
             });
         },
-        
+
         async handleFiles(files) {
             const status = document.getElementById('uploadStatus');
             status.classList.remove('hidden', 'success', 'error');
             status.classList.add('uploading');
             status.textContent = `Uploading ${files.length} file(s)...`;
-            
+
             let successCount = 0;
             let errorCount = 0;
-            
+
             for (const file of files) {
                 try {
                     const formData = new FormData();
                     formData.append('file', file);
-                    
+
                     const response = await fetch(`/api/vector-stores/${this.currentDomain}/files`, {
                         method: 'POST',
                         body: formData
                     });
-                    
+
                     if (!response.ok) throw new Error('Upload failed');
                     successCount++;
                 } catch (error) {
@@ -579,7 +679,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     errorCount++;
                 }
             }
-            
+
             status.classList.remove('uploading');
             if (errorCount === 0) {
                 status.classList.add('success');
@@ -589,23 +689,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 status.classList.add('error');
                 status.textContent = `⚠️ Uploaded ${successCount} files, ${errorCount} failed`;
             }
-            
+
             // Clear status after 3 seconds
             setTimeout(() => {
                 status.classList.add('hidden');
             }, 3000);
         },
-        
+
         async deleteFile(fileId) {
             if (!confirm('Are you sure you want to delete this file?')) return;
-            
+
             try {
                 const response = await fetch(`/api/vector-stores/${this.currentDomain}/files/${encodeURIComponent(fileId)}`, {
                     method: 'DELETE'
                 });
-                
+
                 if (!response.ok) throw new Error('Delete failed');
-                
+
                 this.loadFiles();
             } catch (error) {
                 console.error('Delete error:', error);
@@ -622,17 +722,17 @@ document.addEventListener('DOMContentLoaded', () => {
         currentScenarioData = data;
         // Title and Badges
         document.getElementById('scenarioTitle').textContent = `${data.metadata.hazard_type} in ${data.metadata.location}`;
-        
+
         const badgesContainer = document.getElementById('scenarioBadges');
         badgesContainer.innerHTML = '';
-        
+
         if (data.metadata.severity) {
             const severityBadge = document.createElement('span');
             severityBadge.className = `badge severity-${data.metadata.severity.toLowerCase()}`;
             severityBadge.textContent = data.metadata.severity;
             badgesContainer.appendChild(severityBadge);
         }
-        
+
         if (data.metadata.season) {
             const seasonBadge = document.createElement('span');
             seasonBadge.className = 'badge info';
@@ -642,7 +742,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Narrative Summary
         document.getElementById('narrativeSummary').textContent = data.narrative.summary;
-        
+
         // Timeline
         const timelineContainer = document.getElementById('narrativeTimeline');
         timelineContainer.innerHTML = '';
@@ -668,8 +768,8 @@ document.addEventListener('DOMContentLoaded', () => {
         data.cascading_effects.forEach((effect, index) => {
             const card = document.createElement('div');
             card.className = 'effect-card';
-            
-            const probability = effect.probability !== null && effect.probability !== undefined 
+
+            const probability = effect.probability !== null && effect.probability !== undefined
                 ? `<div class="effect-field">
                      <div class="effect-field-label">Probability</div>
                      <div class="effect-probability">
@@ -678,13 +778,13 @@ document.addEventListener('DOMContentLoaded', () => {
                        </div>
                        <span>${(effect.probability * 100).toFixed(0)}%</span>
                      </div>
-                   </div>` 
+                   </div>`
                 : '';
-            
-            const systemTags = effect.impacted_systems.map(sys => 
+
+            const systemTags = effect.impacted_systems.map(sys =>
                 `<span class="system-tag">${sys}</span>`
             ).join('');
-            
+
             card.innerHTML = `
                 <div class="effect-header">
                     <div class="effect-number">${index + 1}</div>
@@ -712,7 +812,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.thoughts && data.thoughts.length > 0) {
             thinkingFooter.style.display = 'block';
             const thinkingContent = document.getElementById('thinkingContent');
-            thinkingContent.innerHTML = data.thoughts.map(t => 
+            thinkingContent.innerHTML = data.thoughts.map(t =>
                 `<div class="thought-item">
                     <p>${t.content}</p>
                  </div>`
@@ -746,7 +846,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.classList.add('active');
             const tabId = `${btn.dataset.tab}Tab`;
             document.getElementById(tabId).classList.add('active');
-            
+
             // Load admin prompts when switching to admin tab
             if (btn.dataset.tab === 'admin') {
                 loadAdminPrompts();
@@ -790,8 +890,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderPlannerResults(plan) {
         // Objectives
         const objectivesContainer = document.getElementById('plannerObjectives');
-        objectivesContainer.innerHTML = '<h4>Objectives</h4><ul>' + 
-            plan.objectives.map(obj => `<li>${obj}</li>`).join('') + 
+        objectivesContainer.innerHTML = '<h4>Objectives</h4><ul>' +
+            plan.objectives.map(obj => `<li>${obj}</li>`).join('') +
             '</ul>';
 
         // Tasks
