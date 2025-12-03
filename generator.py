@@ -18,6 +18,9 @@ def load_prompts():
     return {}
 
 PROMPTS = load_prompts()
+TEMPERATURE = 1.3
+MODEL_ID = "gemini-2.5-flash-lite"
+
 
 
 def generate_scenario_data(topic: str) -> EmergencyScenario:
@@ -71,19 +74,19 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
     # 2. Extract thoughts from responses
     # 3. Enforce JSON schema only at the final turn (avoiding conflicts with tool calling)
     
-    model_id = "gemini-2.5-flash-lite"
     
     # Stage 1: Let the orchestrator call specialist tools to gather cascading effects
     # We do NOT set response_schema here so it can freely call tools
     
     response = client.models.generate_content(
-        model=model_id,
+        model=MODEL_ID,
         contents=prompt,
         config=types.GenerateContentConfig(
             tools=tools,
             thinking_config=types.ThinkingConfig(
                 include_thoughts=True
-            )
+            ),
+            temperature=TEMPERATURE,
         )
     )
 
@@ -158,13 +161,14 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
              
              # Generate next response
              current_response = client.models.generate_content(
-                 model=model_id,
+                 model=MODEL_ID,
                  contents=history,
                  config=types.GenerateContentConfig(
                      tools=tools,
                      thinking_config=types.ThinkingConfig(
                          include_thoughts=True
-                     )
+                     ),
+                     temperature=TEMPERATURE,
                  )
              )
              history.append(current_response.candidates[0].content)
@@ -197,14 +201,15 @@ def generate_scenario_data(topic: str) -> EmergencyScenario:
     history.append(types.Content(role="user", parts=[types.Part(text=final_prompt)]))
     
     final_response = client.models.generate_content(
-        model=model_id,
+        model=MODEL_ID,
         contents=history,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=EmergencyScenario,
             thinking_config=types.ThinkingConfig(
                 include_thoughts=True
-            )
+            ),
+            temperature=TEMPERATURE,
         )
     )
     
@@ -223,7 +228,6 @@ def generate_response_plan(scenario_context: str) -> DraftResponsePlan:
     Generates a draft response plan based on the provided scenario context.
     """
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-    model_id = "gemini-2.5-flash-lite"
 
     prompt = f"""
     You are an expert Emergency Response Planner for Apex, NC.
@@ -237,14 +241,15 @@ def generate_response_plan(scenario_context: str) -> DraftResponsePlan:
     """
 
     response = client.models.generate_content(
-        model=model_id,
+        model=MODEL_ID,
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=DraftResponsePlan,
             thinking_config=types.ThinkingConfig(
                 include_thoughts=True
-            )
+            ),
+            temperature=TEMPERATURE,
         )
     )
     
@@ -255,7 +260,6 @@ def generate_prompt_suggestion() -> str:
     Generates a creative emergency scenario prompt suggestion.
     """
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-    model_id = "gemini-2.5-flash-lite"
 
     prompt = """
     Generate a creative, detailed, and realistic emergency scenario prompt for the town of Apex, NC.
@@ -269,8 +273,11 @@ def generate_prompt_suggestion() -> str:
     """
 
     response = client.models.generate_content(
-        model=model_id,
-        contents=prompt
+        model=MODEL_ID,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=TEMPERATURE,
+        )
     )
     
     return response.text.strip()

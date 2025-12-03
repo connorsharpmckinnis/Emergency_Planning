@@ -106,6 +106,44 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Wrapper for fetch API with standardized error handling
+     * @param {string} endpoint - API endpoint
+     * @param {Object} options - Fetch options
+     * @returns {Promise<Response>} Response object
+     */
+    async function apiFetch(endpoint, options = {}) {
+        const response = await fetch(endpoint, {
+            headers: { 'Content-Type': 'application/json' },
+            ...options,
+            // Merge headers if provided in options
+            headers: {
+                'Content-Type': 'application/json',
+                ...(options.headers || {})
+            }
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text().catch(() => 'Unknown error');
+            throw new Error(errorText || `Request to ${endpoint} failed`);
+        }
+
+        return response;
+    }
+
+    /**
+     * Helper to generate scenario from topic
+     * @param {string} topic - Scenario topic
+     * @returns {Promise<Object>} Generated scenario data
+     */
+    async function generateScenario(topic) {
+        const response = await apiFetch('/generate', {
+            method: 'POST',
+            body: JSON.stringify({ topic })
+        });
+        return await response.json();
+    }
+
     // Ensure loading is hidden on initial page load
     loadingSection.classList.add('hidden');
     resultSection.classList.add('hidden');
@@ -122,19 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
         startThinkingMessages();
 
         try {
-            const response = await fetch('/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ topic }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Generation failed');
-            }
-
-            const scenario = await response.json();
+            const scenario = await generateScenario(topic);
 
             // Small delay for smooth transition
             await new Promise(resolve => setTimeout(resolve, 300));
@@ -152,6 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingSection.classList.add('hidden');
         }
     });
+
 
     // Magic Prompt Button Logic
     const magicPromptBtn = document.getElementById('magicPromptBtn');
@@ -206,48 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Export PDF Button
-    const exportPdfBtn = document.getElementById('exportPdfBtn');
-    if (exportPdfBtn) {
-        exportPdfBtn.addEventListener('click', async () => {
-            if (!currentScenarioData) return;
 
-            await handleAsyncButton(
-                exportPdfBtn,
-                async () => {
-                    const response = await fetch('/export-pdf', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ scenario: currentScenarioData })
-                    });
-                    if (!response.ok) throw new Error('PDF export failed');
-
-                    // Download the PDF
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-
-                    // Extract filename from Content-Disposition header or use default
-                    const contentDisposition = response.headers.get('content-disposition');
-                    const filename = contentDisposition
-                        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
-                        : 'scenario.pdf';
-
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                },
-                {
-                    loadingText: 'Generating PDF...',
-                    errorMessage: 'Failed to export PDF. Please try again.',
-                    successMessage: 'PDF downloaded successfully!'
-                }
-            );
-        });
-    }
 
     // Draft Response Button
     const draftResponseBtn = document.getElementById('draftResponseBtn');
@@ -323,8 +309,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 container.querySelectorAll('.delete-specialist-btn').forEach(btn => {
                     btn.addEventListener('click', async (e) => {
                         const domain = e.currentTarget.dataset.domain;
-                        if (confirm(`Are you sure you want to delete the ${domain} agent?`)) {
+                        if (!confirm(`Are you sure you want to delete the ${domain} agent?`)) return;
+
+                        try {
                             await deleteSpecialist(domain);
+                        } catch (error) {
+                            console.error('Error deleting specialist:', error);
+                            alert('Failed to delete specialist');
                         }
                     });
                 });
@@ -337,29 +328,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Delete Specialist
     async function deleteSpecialist(domain) {
-        try {
-            const response = await fetch('/api/prompts');
-            const prompts = await response.json();
+        const response = await apiFetch('/api/prompts');
+        const prompts = await response.json();
 
-            if (prompts.specialists && prompts.specialists[domain]) {
-                delete prompts.specialists[domain];
+        if (prompts.specialists && prompts.specialists[domain]) {
+            delete prompts.specialists[domain];
 
-                const saveResponse = await fetch('/api/prompts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(prompts)
-                });
+            await apiFetch('/api/prompts', {
+                method: 'POST',
+                body: JSON.stringify(prompts)
+            });
 
-                if (!saveResponse.ok) throw new Error('Save failed');
-
-                // Reload UI
-                loadAdminPrompts();
-            }
-        } catch (error) {
-            console.error('Error deleting specialist:', error);
-            alert('Failed to delete specialist');
+            // Reload UI
+            loadAdminPrompts();
         }
     }
+
 
     // Add Specialist
     const addSpecialistBtn = document.getElementById('addSpecialistBtn');
@@ -569,9 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
             container.innerHTML = '<div class="empty-state">Loading files...</div>';
 
             try {
-                const response = await fetch(`/api/vector-stores/${this.currentDomain}/files`);
-                if (!response.ok) throw new Error('Failed to load files');
-
+                const response = await apiFetch(`/api/vector-stores/${this.currentDomain}/files`);
                 const files = await response.json();
                 this.renderFiles(files);
             } catch (error) {
@@ -579,6 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 container.innerHTML = '<div class="empty-state error">Failed to load files</div>';
             }
         },
+
 
         renderFiles(files) {
             const container = document.getElementById('fileListContainer');
@@ -667,12 +650,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const formData = new FormData();
                     formData.append('file', file);
 
-                    const response = await fetch(`/api/vector-stores/${this.currentDomain}/files`, {
+                    await apiFetch(`/api/vector-stores/${this.currentDomain}/files`, {
                         method: 'POST',
-                        body: formData
+                        body: formData,
+                        headers: {}  // Don't set Content-Type for FormData
                     });
-
-                    if (!response.ok) throw new Error('Upload failed');
                     successCount++;
                 } catch (error) {
                     console.error('Upload error:', error);
@@ -700,11 +682,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!confirm('Are you sure you want to delete this file?')) return;
 
             try {
-                const response = await fetch(`/api/vector-stores/${this.currentDomain}/files/${encodeURIComponent(fileId)}`, {
+                await apiFetch(`/api/vector-stores/${this.currentDomain}/files/${encodeURIComponent(fileId)}`, {
                     method: 'DELETE'
                 });
-
-                if (!response.ok) throw new Error('Delete failed');
 
                 this.loadFiles();
             } catch (error) {

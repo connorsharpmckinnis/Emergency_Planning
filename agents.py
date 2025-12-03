@@ -69,6 +69,7 @@ Generate a single detailed CascadingEffect object."""
             system_instruction=system_prompt,
             response_mime_type="application/json",
             response_schema=CascadingEffect,
+            temperature=1.3,
         )
 
         if self.vector_store_name:
@@ -98,13 +99,7 @@ Generate a single detailed CascadingEffect object."""
 # Define available specialists using loaded prompts
 def create_specialists():
     """Create specialist agents from prompts configuration"""
-    specialist_configs = PROMPTS.get("specialists", {
-        "fire": {"description": "Focus on fire suppression, search and rescue, and hazardous materials."},
-        "police": {"description": "Focus on public order, traffic control, and crime prevention."},
-        "medical": {"description": "Focus on triaging, hospital capacity, and public health."},
-        "utilities": {"description": "Focus on power, water, gas, and telecommunications infrastructure."},
-        "transport": {"description": "Focus on road networks, public transit, and logistics."},
-    })
+    specialist_configs = PROMPTS.get("specialists", "")
     
     base_prompt = PROMPTS.get("specialist_base_prompt")
     system_instruction = PROMPTS.get("system_instruction")

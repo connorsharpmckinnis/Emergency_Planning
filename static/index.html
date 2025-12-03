@@ -1,240 +1,244 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Emergency Scenario Generator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/styles.css" />
-  </head>
-  <body>
+</head>
+
+<body>
     <div class="container">
-      <header>
-        <h1>Apex Emergency Scenario Generator</h1>
-        <p>AI-Powered Multi-Agent Simulation & Response Planning</p>
-      </header>
+        <header>
+            <h1>Apex Emergency Scenario Generator</h1>
+            <p>AI-Powered Multi-Agent Simulation & Response Planning</p>
+        </header>
 
-      <div class="tabs">
-        <button class="tab-btn active" data-tab="generator">Disaster Generator</button>
-        <button class="tab-btn" data-tab="planner">Response Planner</button>
-        <button class="tab-btn" data-tab="admin">⚙️ Admin</button>
-      </div>
-
-      <main>
-        <!-- DISASTER GENERATOR TAB -->
-        <div id="generatorTab" class="tab-content active">
-            <div class="input-group">
-              <input type="text" id="topicInput" placeholder="Enter an emergency scenario (e.g., 'Category 4 Hurricane hitting Apex')" />
-              <button id="magicPromptBtn" class="icon-btn" title="Generate AI Prompt">✨</button>
-              <button id="generateBtn">Generate Scenario</button>
-            </div>
-            <div id="loading" class="hidden">
-              <div class="spinner"></div>
-              <p>Orchestrating agents...</p>
-              <p class="thinking-message" id="thinkingMessage"></p>
-            </div>
-            
-            <!-- Generator Results Container -->
-            <div id="results" class="hidden">
-                <!-- Hero Section: Narrative -->
-                <div class="narrative-hero">
-                    <div class="narrative-header">
-                        <h2 id="scenarioTitle">Scenario Title</h2>
-                        <div class="badges" id="scenarioBadges"></div>
-                    </div>
-                    <div class="action-buttons">
-                        <button id="saveJsonBtn" class="action-btn save-btn">
-                            <span>💾</span> Save JSON
-                        </button>
-                        <button id="exportPdfBtn" class="action-btn export-btn">
-                            <span>📄</span> Download PDF
-                        </button>
-                        <button id="draftResponseBtn" class="action-btn draft-btn">
-                            <span>📋</span> Draft Response
-                        </button>
-                    </div>
-                    <div class="narrative-summary">
-                        <p id="narrativeSummary"></p>
-                    </div>
-                </div>
-
-                <!-- Timeline Section -->
-                <div class="timeline-section">
-                    <h3>Event Timeline</h3>
-                    <div class="timeline-container" id="narrativeTimeline"></div>
-                </div>
-
-                <!-- Metadata Grid -->
-                <div class="metadata-grid">
-                    <div class="metadata-card">
-                        <div class="metadata-icon">📍</div>
-                        <div class="metadata-content">
-                            <span class="metadata-label">Location</span>
-                            <span class="metadata-value" id="metaLocation"></span>
-                        </div>
-                    </div>
-                    <div class="metadata-card">
-                        <div class="metadata-icon">🌡️</div>
-                        <div class="metadata-content">
-                            <span class="metadata-label">Season</span>
-                            <span class="metadata-value" id="metaSeason"></span>
-                        </div>
-                    </div>
-                    <div class="metadata-card">
-                        <div class="metadata-icon">⚠️</div>
-                        <div class="metadata-content">
-                            <span class="metadata-label">Severity</span>
-                            <span class="metadata-value" id="metaSeverity"></span>
-                        </div>
-                    </div>
-                    <div class="metadata-card">
-                        <div class="metadata-icon">🎯</div>
-                        <div class="metadata-content">
-                            <span class="metadata-label">Hazard Type</span>
-                            <span class="metadata-value" id="metaHazard"></span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Cascading Effects -->
-                <div class="effects-section">
-                    <h3>Cascading Effects Analysis</h3>
-                    <div class="effects-grid" id="effectsList"></div>
-                </div>
-
-                <!-- Orchestrator Thinking (Subtle Footer) -->
-                <div class="thinking-footer" id="thinkingFooter" style="display: none;">
-                    <button class="thinking-toggle" id="toggleThinking">
-                        <span>View Orchestrator Reasoning</span>
-                        <span class="toggle-icon">▼</span>
-                    </button>
-                    <div class="thinking-content hidden" id="thinkingContent"></div>
-                </div>
-            </div>
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="generator">Scenario Generator</button>
+            <button class="tab-btn" data-tab="planner">Response Planner</button>
+            <button class="tab-btn" data-tab="admin">Admin</button>
         </div>
 
-        <!-- RESPONSE PLANNER TAB -->
-        <div id="plannerTab" class="tab-content">
-            <div class="card input-card">
-                <h3>Generate Response Plan</h3>
-                <p>Paste a scenario description or JSON to generate a detailed response plan.</p>
-                <textarea id="plannerInput" rows="10" placeholder="Paste scenario details here..."></textarea>
-                <button id="generatePlanBtn" class="primary-btn">Generate Plan</button>
-            </div>
+        <main>
+            <!-- SCENARIO GENERATOR TAB -->
+            <div id="generatorTab" class="tab-content active">
+                <div class="input-group">
+                    <input type="text" id="topicInput"
+                        placeholder="Enter an emergency scenario (e.g., 'Category 4 Hurricane hitting Apex')" />
+                    <button id="magicPromptBtn" class="icon-btn" title="Generate AI Prompt">✨</button>
+                    <button id="generateBtn">Generate Scenario</button>
+                </div>
+                <div id="loading" class="hidden">
+                    <div class="spinner"></div>
+                    <p>Orchestrating agents...</p>
+                    <p class="thinking-message" id="thinkingMessage"></p>
+                </div>
 
-            <div id="plannerLoading" class="hidden">
-                <div class="spinner"></div>
-                <p>Drafting response plan...</p>
-            </div>
+                <!-- Generator Results Container -->
+                <div id="results" class="hidden">
+                    <!-- Hero Section: Narrative -->
+                    <div class="narrative-hero">
+                        <div class="narrative-header">
+                            <h2 id="scenarioTitle">Scenario Title</h2>
+                            <div class="badges" id="scenarioBadges"></div>
+                        </div>
+                        <div class="action-buttons">
+                            <button id="saveJsonBtn" class="action-btn save-btn">
+                                <span>💾</span> Save JSON
+                            </button>
 
-            <div id="plannerResults" class="hidden">
-                <div class="card plan-card">
-                    <h3>Draft Response Plan</h3>
-                    <div class="objectives" id="plannerObjectives"></div>
-                    <table class="tasks-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Task</th>
-                                <th>Priority</th>
-                                <th>Owner</th>
-                            </tr>
-                        </thead>
-                        <tbody id="plannerTasksBody"></tbody>
-                    </table>
+                            <button id="draftResponseBtn" class="action-btn draft-btn">
+                                <span>📋</span> Draft Response
+                            </button>
+                        </div>
+                        <div class="narrative-summary">
+                            <p id="narrativeSummary"></p>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Section -->
+                    <div class="timeline-section">
+                        <h3>Event Timeline</h3>
+                        <div class="timeline-container" id="narrativeTimeline"></div>
+                    </div>
+
+                    <!-- Metadata Grid -->
+                    <div class="metadata-grid">
+                        <div class="card">
+                            <div class="metadata-icon">📍</div>
+                            <div class="metadata-content">
+                                <span class="metadata-label">Location</span>
+                                <span class="metadata-value" id="metaLocation"></span>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="metadata-icon">🌡️</div>
+                            <div class="metadata-content">
+                                <span class="metadata-label">Season</span>
+                                <span class="metadata-value" id="metaSeason"></span>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="metadata-icon">⚠️</div>
+                            <div class="metadata-content">
+                                <span class="metadata-label">Severity</span>
+                                <span class="metadata-value" id="metaSeverity"></span>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="metadata-icon">🎯</div>
+                            <div class="metadata-content">
+                                <span class="metadata-label">Hazard Type</span>
+                                <span class="metadata-value" id="metaHazard"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cascading Effects -->
+                    <div class="effects-section">
+                        <h3>Cascading Effects Analysis</h3>
+                        <div class="effects-grid" id="effectsList"></div>
+                    </div>
+
+                    <!-- Orchestrator Thinking (Subtle Footer) -->
+                    <div class="thinking-footer" id="thinkingFooter" style="display: none;">
+                        <button class="thinking-toggle" id="toggleThinking">
+                            <span>View Orchestrator Reasoning</span>
+                            <span class="toggle-icon">▼</span>
+                        </button>
+                        <div class="thinking-content hidden" id="thinkingContent"></div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ADMIN TAB -->
-        <div id="adminTab" class="tab-content">
-            <div class="admin-container">
-                <!-- Orchestrator Section -->
-                <section class="admin-section">
-                    <h3>🎯 Orchestrator Prompt</h3>
-                    <p class="section-description">Configure the main orchestrator AI that coordinates specialist agents</p>
-                    <textarea id="orchestratorPrompt" rows="8" placeholder="Enter orchestrator prompt..."></textarea>
-                    <button id="saveOrchestratorBtn" class="primary-btn">💾 Save Orchestrator Prompt</button>
-                </section>
+            <!-- RESPONSE PLANNER TAB -->
+            <div id="plannerTab" class="tab-content">
+                <div class="card card">
+                    <h3>Generate Response Plan</h3>
+                    <p>Paste a scenario description or JSON to generate a detailed response plan.</p>
+                    <textarea id="plannerInput" rows="10" placeholder="Paste scenario details here..."></textarea>
+                    <button id="generatePlanBtn" class="primary-btn">Generate Plan</button>
+                </div>
 
-                <!-- Specialist Prompts Section -->
-                <section class="admin-section">
-                    <h3>👥 Specialist Agent Configuration</h3>
-                    <p class="section-description">Configure base prompts and individual specialist behaviors</p>
-                    
-                    <!-- Base Prompt -->
-                    <div class="prompt-editor">
-                        <label><strong>Base Prompt (Shared by All Specialists)</strong></label>
-                        <textarea id="specialistBasePrompt" rows="6" placeholder="Enter base prompt for all specialists..."></textarea>
+                <div id="plannerLoading" class="hidden">
+                    <div class="spinner"></div>
+                    <p>Drafting response plan...</p>
+                </div>
+
+                <div id="plannerResults" class="hidden">
+                    <div class="card plan-card">
+                        <h3>Draft Response Plan</h3>
+                        <div class="objectives" id="plannerObjectives"></div>
+                        <table class="tasks-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Task</th>
+                                    <th>Priority</th>
+                                    <th>Owner</th>
+                                </tr>
+                            </thead>
+                            <tbody id="plannerTasksBody"></tbody>
+                        </table>
                     </div>
-                    
-                    <!-- Individual Specialists -->
-                    <div class="specialist-grid" id="specialistPromptsContainer">
-                        <!-- Specialist cards will be populated dynamically -->
-                    </div>
-                    
-                    <!-- Add New Specialist Form -->
-                    <div class="add-specialist-form card">
-                        <h4>➕ Add New Specialist Agent</h4>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Domain (e.g., 'logistics')</label>
-                                <input type="text" id="newSpecialistDomain" placeholder="Enter domain name...">
-                            </div>
-                            <div class="form-group">
-                                <label>Description</label>
-                                <input type="text" id="newSpecialistDescription" placeholder="Describe the agent's focus...">
-                            </div>
-                            <button id="addSpecialistBtn" class="secondary-btn">Add Agent</button>
+                </div>
+            </div>
+
+            <!-- ADMIN TAB -->
+            <div id="adminTab" class="tab-content">
+                <div class="admin-container">
+                    <!-- Orchestrator Section -->
+                    <section class="admin-section">
+                        <h3>🎯 Orchestrator Prompt</h3>
+                        <p class="section-description">Configure the main orchestrator AI that coordinates specialist
+                            agents</p>
+                        <textarea id="orchestratorPrompt" rows="8"
+                            placeholder="Enter orchestrator prompt..."></textarea>
+                        <button id="saveOrchestratorBtn" class="primary-btn">💾 Save Orchestrator Prompt</button>
+                    </section>
+
+                    <!-- Specialist Prompts Section -->
+                    <section class="admin-section">
+                        <h3>👥 Specialist Agent Configuration</h3>
+                        <p class="section-description">Configure base prompts and individual specialist behaviors</p>
+
+                        <!-- Base Prompt -->
+                        <div class="prompt-editor">
+                            <label><strong>Base Prompt (Shared by All Specialists)</strong></label>
+                            <textarea id="specialistBasePrompt" rows="6"
+                                placeholder="Enter base prompt for all specialists..."></textarea>
                         </div>
-                    </div>
 
-                    <button id="saveSpecialistsBtn" class="primary-btn">💾 Save All Specialist Prompts</button>
-                </section>
-
-                <!-- Vector Store Management Section -->
-                <section class="admin-section">
-                    <h3>📁 Vector Store Knowledge Base</h3>
-                    <p class="section-description">Manage documents for specialist agents. Upload PDFs or text files to enhance their domain knowledge.</p>
-                    
-                    <div class="vector-store-manager">
-                        <!-- Domain Tabs for Files -->
-                        <div class="domain-tabs" id="domainTabsContainer">
-                            <!-- Tabs will be populated dynamically -->
+                        <!-- Individual Specialists -->
+                        <div class="specialist-grid" id="specialistPromptsContainer">
+                            <!-- Specialist cards will be populated dynamically -->
                         </div>
 
-                        <div class="file-manager-content">
-                            <div class="file-list-header">
-                                <h4>Indexed Documents</h4>
-                                <button id="refreshFilesBtn" class="icon-btn" title="Refresh List">🔄</button>
-                            </div>
-                            
-                            <div id="fileListContainer" class="file-list-container">
-                                <!-- Files will be populated here -->
-                                <div class="empty-state">Select a domain to view files</div>
-                            </div>
-
-                            <div class="upload-area" id="uploadArea">
-                                <input type="file" id="fileInput" multiple style="display: none">
-                                <div class="upload-placeholder">
-                                    <span class="upload-icon">📄</span>
-                                    <p>Drag & drop files here or <a href="#" id="browseFilesLink">browse</a></p>
-                                    <span class="upload-hint">Supported: PDF, TXT, MD</span>
+                        <!-- Add New Specialist Form -->
+                        <div class="add-specialist-form card">
+                            <h4>➕ Add New Specialist Agent</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Domain (e.g., 'logistics')</label>
+                                    <input type="text" id="newSpecialistDomain" placeholder="Enter domain name...">
                                 </div>
+                                <div class="form-group">
+                                    <label>Description</label>
+                                    <input type="text" id="newSpecialistDescription"
+                                        placeholder="Describe the agent's focus...">
+                                </div>
+                                <button id="addSpecialistBtn" class="secondary-btn">Add Agent</button>
                             </div>
-                            <div id="uploadStatus" class="upload-status hidden"></div>
                         </div>
-                    </div>
-                </section>
+
+                        <button id="saveSpecialistsBtn" class="primary-btn">💾 Save All Specialist Prompts</button>
+                    </section>
+
+                    <!-- Vector Store Management Section -->
+                    <section class="admin-section">
+                        <h3>📁 Vector Store Knowledge Base</h3>
+                        <p class="section-description">Manage documents for specialist agents. Upload PDFs or text files
+                            to enhance their domain knowledge.</p>
+
+                        <div class="vector-store-manager">
+                            <!-- Domain Tabs for Files -->
+                            <div class="domain-tabs" id="domainTabsContainer">
+                                <!-- Tabs will be populated dynamically -->
+                            </div>
+
+                            <div class="file-manager-content">
+                                <div class="file-list-header">
+                                    <h4>Indexed Documents</h4>
+                                    <button id="refreshFilesBtn" class="icon-btn" title="Refresh List">🔄</button>
+                                </div>
+
+                                <div id="fileListContainer" class="file-list-container">
+                                    <!-- Files will be populated here -->
+                                    <div class="empty-state">Select a domain to view files</div>
+                                </div>
+
+                                <div class="upload-area" id="uploadArea">
+                                    <input type="file" id="fileInput" multiple style="display: none">
+                                    <div class="upload-placeholder">
+                                        <span class="upload-icon">📄</span>
+                                        <p>Drag & drop files here or <a href="#" id="browseFilesLink">browse</a></p>
+                                        <span class="upload-hint">Supported: PDF, TXT, MD</span>
+                                    </div>
+                                </div>
+                                <div id="uploadStatus" class="upload-status hidden"></div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
             </div>
-        </div>
-      </main>
+        </main>
     </div>
     <script src="/static/app.js?v=3"></script>
-  </body>
+</body>
+
 </html>
