@@ -18,7 +18,7 @@ def load_prompts():
     return {}
 
 PROMPTS = load_prompts()
-TEMPERATURE = 1.3
+TEMPERATURE = 1.7
 MODEL_ID = "gemini-2.5-flash-lite"
 
 

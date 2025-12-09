@@ -113,12 +113,14 @@ document.addEventListener('DOMContentLoaded', () => {
      * @returns {Promise<Response>} Response object
      */
     async function apiFetch(endpoint, options = {}) {
+        // Don't set Content-Type for FormData - browser will set it with boundary
+        const isFormData = options.body instanceof FormData;
+
         const response = await fetch(endpoint, {
-            headers: { 'Content-Type': 'application/json' },
             ...options,
-            // Merge headers if provided in options
             headers: {
-                'Content-Type': 'application/json',
+                // Only set Content-Type for non-FormData requests
+                ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
                 ...(options.headers || {})
             }
         });

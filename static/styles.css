@@ -10,7 +10,7 @@
   --text-primary: #f8fafc;
   --text-secondary: #a0a0a0;
   --accent: #888;
-  --accent-hover: #666;
+  --accent-hover: #313131;
   --danger: #ef4444;
   --warning: #f59e0b;
   --success: #10b981;
@@ -84,7 +84,8 @@ body {
 
 .container {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 h1,
@@ -178,7 +179,7 @@ button:disabled,
 }
 
 .btn-primary {
-  background: var(--accent);
+  background: var(--text-primary);
   color: #0f172a;
 }
 
@@ -225,6 +226,7 @@ button:disabled,
 
 /* ===== CARDS ===== */
 .card {
+  margin: 0 auto;
   background: var(--card-bg);
   padding: var(--xl);
   border-radius: var(--r-lg);
@@ -260,14 +262,122 @@ button:disabled,
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
+/* Effect Card Enhanced Styling */
 .effect-card {
-  background: var(--light-bg);
-  border: 1px solid var(--light-border);
+  background: var(--card-bg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--md);
 }
 
 .effect-card:hover {
-  border-color: var(--purple);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(136, 136, 136, 0.2);
+  transform: translateY(-2px);
+}
+
+.effect-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: var(--sm);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.effect-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(136, 136, 136, 0.15);
+  border-radius: var(--r-md);
+}
+
+.effect-author {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--xs) var(--sm);
+  background: rgba(136, 136, 136, 0.2);
+  color: var(--text-secondary);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.effect-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xs);
+}
+
+.effect-field-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.effect-field-value {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.effect-systems {
+  display: flex;
+  gap: var(--xs);
+  flex-wrap: wrap;
+}
+
+.system-tag {
+  font-size: 0.8rem;
+  padding: var(--xs) var(--sm);
+  background: rgba(136, 136, 136, 0.15);
+  color: var(--text-primary);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: var(--transition-fast);
+}
+
+.system-tag:hover {
+  background: rgba(136, 136, 136, 0.25);
+  border-color: var(--accent);
+}
+
+.effect-probability {
+  display: flex;
+  align-items: center;
+  gap: var(--sm);
+}
+
+.probability-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.probability-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+.effect-probability span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 40px;
+  text-align: right;
 }
 
 .specialist-card {
@@ -278,12 +388,15 @@ button:disabled,
 .specialist-card:hover {
   background: var(--accent-hover);
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(136, 136, 136, 0.1);
 }
 
 /* ===== INPUTS ===== */
 input,
 textarea {
+  width: 100%;
   font-family: inherit;
+  background: var(--card-bg);
   color: var(--text-primary);
   border-radius: var(--r-md);
   padding: .75rem var(--md);
@@ -294,17 +407,21 @@ input:focus,
 textarea:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(136, 136, 136, 0.1);
 }
 
 textarea {
+  width: 100%;
   background: var(--card-bg);
   border: 1px solid rgba(255, 255, 255, 0.2);
   resize: vertical;
   line-height: 1.6;
   margin: var(--md) 0;
+  min-height: 120px;
 }
 
 .admin-section textarea {
+  width: 100%;
   font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
   font-size: .9rem;
 }
@@ -333,6 +450,7 @@ textarea {
   color: #0f172a;
   font-weight: 600;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(136, 136, 136, 0.1);
 }
 
 .tab-content {
@@ -556,6 +674,7 @@ header p {
 }
 
 .metadata-grid .card {
+  margin: 0 auto;
   display: flex;
   align-items: center;
   gap: var(--md);
@@ -566,6 +685,7 @@ header p {
 .metadata-grid .card:hover {
   transform: translateY(-2px);
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(136, 136, 136, 0.1);
 }
 
 .metadata-content {
@@ -653,6 +773,8 @@ header p {
 
 /* Admin & Planner Layouts */
 .admin-container {
+  max-width: 1200px;
+  margin: 0 auto;
   display: grid;
   gap: var(--2xl);
 }
@@ -670,7 +792,7 @@ header p {
 }
 
 .specialist-card h4 {
-  color: var(--accent);
+  color: var(--text-primary);
   margin-bottom: var(--xs);
 }
 
@@ -696,7 +818,7 @@ header p {
   display: block;
   margin-bottom: var(--xs);
   font-size: 0.85rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -734,6 +856,7 @@ header p {
 
 .upload-area:hover {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(136, 136, 136, 0.1);
   background: rgba(255, 255, 255, 0.05);
 }
 

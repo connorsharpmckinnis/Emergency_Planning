@@ -125,39 +125,48 @@ def upload_file_to_store(domain: str, file_path: str, display_name: str = None):
 def delete_file_from_store(domain: str, file_name: str):
     """
     Removes a file from the vector store and deletes the file resource.
-    file_name is the resource ID (files/...)
+    file_name is the document's resource name from the vector store
+    Returns True if successful, False if domain not found
     """
     mapping = load_mapping()
     if domain not in mapping:
-        return
+        print(f"Domain {domain} not found in mapping")
+        return False
         
     store_name = mapping[domain]
     
     try:
-        # Delete from store using documents accessor
-        # The name format for deletion is likely the full resource name of the document in the store
-        # which is usually {store_name}/files/{file_id}
-        # But wait, the 'name' attribute of the listed document IS likely that full path.
-        # Let's assume file_name passed here is the file resource name (files/...)
-        # We need to construct the document resource name.
+        print(f"Attempting to delete file {file_name} from {store_name}")
         
-        # Actually, looking at the list output, f.name might be the document name.
-        # But let's check what we passed to delete_file_from_store.
-        # In app.js we passed `file.name`.
-        # If `list_files_in_store` returns `f.name` as the file resource (files/...), 
-        # then we need to know the document resource name to delete it from the store.
+        # The file_name from the frontend is f.name from list_files_in_store
+        # This is the full document resource name (e.g., "fileSearchStores/.../documents/...")
         
-        # Extract file ID (works whether input is files/ID or full document path)
-        file_id = file_name.split('/')[-1]
+        print(f"Deleting document from store: {file_name}")
         
-        # Delete from store using documents accessor
-        client.file_search_stores.documents.delete(
-            name=f"{store_name}/files/{file_id}"
-        )
+        # Try different approaches based on SDK version/behavior
+        try:
+            # Approach 1: Try with config parameter (some SDK versions)
+            client.file_search_stores.documents.delete(
+                name=file_name,
+                config={'force': True}
+            )
+        except TypeError:
+            # Approach 2: Try without force parameter
+            # Some documents might need the underlying file deleted first
+            try:
+                client.file_search_stores.documents.delete(name=file_name)
+            except Exception as e:
+                if "non-empty" in str(e).lower():
+                    # Extract file ID and try deleting the file resource first
+                    print(f"Document is non-empty, attempting alternate deletion method")
+                    # The document name format is: fileSearchStores/{store_id}/documents/{doc_id}
+                    # We need to find and delete associated files
+                    # For now, just re-raise since we can't easily map document to file
+                    raise
+                else:
+                    raise
         
-        # Delete the file resource itself
-        client.files.delete(name=f"files/{file_id}")
-        
+        print(f"Successfully deleted {file_name}")
         return True
     except Exception as e:
         print(f"Error deleting file: {e}")

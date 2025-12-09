@@ -1,4 +1,8 @@
 {
   "fire": "fileSearchStores/apex-fire-store-vmhy3q5nw69o",
-  "police": "fileSearchStores/apex-police-store-ogyjf4vjd680"
+  "police": "fileSearchStores/apex-police-store-ogyjf4vjd680",
+  "medical": "fileSearchStores/apex-medical-store-jdzzfv0dlmjb",
+  "utilities": "fileSearchStores/apex-utilities-store-ufwcjv3ehd7t",
+  "transport": "fileSearchStores/apex-transport-store-dcppppx7y3pe",
+  "it": "fileSearchStores/apex-it-store-u947g2n5g2wk"
 }

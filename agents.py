@@ -7,11 +7,13 @@ import dotenv
 
 dotenv.load_dotenv()
 
-# Load vector store mapping if it exists
-VECTOR_STORE_MAPPING = {}
-if os.path.exists("vector_store_mapping.json"):
-    with open("vector_store_mapping.json", "r") as f:
-        VECTOR_STORE_MAPPING = json.load(f)
+# Load vector store mapping dynamically
+def load_vector_store_mapping():
+    """Load vector store mapping from file"""
+    if os.path.exists("vector_store_mapping.json"):
+        with open("vector_store_mapping.json", "r") as f:
+            return json.load(f)
+    return {}
 
 # Load prompts configuration
 def load_prompts():
@@ -32,7 +34,17 @@ class SpecialistAgent:
         self.base_prompt = base_prompt
         self.system_instruction = system_instruction
         self.client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-        self.vector_store_name = VECTOR_STORE_MAPPING.get(domain)
+        # Load vector store name dynamically each time it's needed
+        # Don't cache it at init time
+        self._vector_store_name = None
+    
+    @property
+    def vector_store_name(self):
+        """Dynamically load vector store name to ensure we have the latest mapping"""
+        mapping = load_vector_store_mapping()
+        store_name = mapping.get(self.domain)
+        print(f"[DEBUG] Agent {self.domain} checking for vector store: {store_name}")
+        return store_name
 
     def generate_cascading_effect(self, scenario_context: str) -> CascadingEffect:
         """
@@ -69,7 +81,7 @@ Generate a single detailed CascadingEffect object."""
             system_instruction=system_prompt,
             response_mime_type="application/json",
             response_schema=CascadingEffect,
-            temperature=1.3,
+            temperature=1.7,
         )
 
         if self.vector_store_name:
@@ -126,10 +138,12 @@ def consult_specialist(domain: str, scenario_context: str) -> CascadingEffect:
     """
     Consults a specialist agent to get a cascading effect.
     """
+    print(f"[DEBUG] consult_specialist called for domain: {domain}")
     agent = specialists.get(domain)
     if not agent:
         raise ValueError(f"Unknown specialist domain: {domain}")
     
+    print(f"[DEBUG] Calling generate_cascading_effect for {domain}")
     effect = agent.generate_cascading_effect(scenario_context)
     effect.author = f"{agent.display_name} Agent"
     return effect
